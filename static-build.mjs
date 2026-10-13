@@ -34,6 +34,9 @@ hook({
   },
 });
 
+// Browser-only globals the app checks against while rendering
+globalThis.AudioBuffer = globalThis.AudioBuffer || class AudioBuffer {};
+
 // Now import your app after the hook is active
 import('./src/App.js')
   .then(({ default: { default: App } }) => {
