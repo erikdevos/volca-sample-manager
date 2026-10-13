@@ -1,6 +1,6 @@
 {
-  "short_name": "Volca Sampler",
-  "name": "Volca Sampler",
+  "short_name": "Volca Samples",
+  "name": "Volca Sample Manager",
   "icons": [
     {
       "src": "favicon.ico",
