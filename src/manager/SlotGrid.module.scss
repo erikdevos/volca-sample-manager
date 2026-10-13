@@ -263,3 +263,67 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+.duplicateBadge {
+  font-family: var(--vsm-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.15rem 0.3rem;
+  border-radius: 0.3rem;
+  margin-left: 0.3rem;
+  margin-right: auto;
+  cursor: help;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+
+  &.same {
+    background: var(--vsm-danger);
+    color: #fff;
+  }
+
+  &.similar {
+    background: var(--vsm-warning);
+    color: var(--vsm-text);
+  }
+
+  .duplicateSummary & {
+    margin: 0;
+    display: inline-block;
+  }
+}
+
+.filled.highlighted {
+  box-shadow: inset 4px 0 0 var(--category-color), 0 0 0 3px var(--vsm-danger);
+  transform: scale(1.04);
+  z-index: 1;
+}
+
+.duplicateSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.5rem;
+  background: var(--vsm-surface);
+  border: 1px solid var(--vsm-border);
+  font-size: 0.85rem;
+}
+
+.pairLink {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: var(--vsm-mono);
+  font-weight: 600;
+  color: var(--vsm-text);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+
+  &:hover,
+  &:focus {
+    color: var(--vsm-accent);
+  }
+}

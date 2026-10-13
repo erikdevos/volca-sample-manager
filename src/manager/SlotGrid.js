@@ -4,6 +4,7 @@ import PlayIcon from '@material-design-icons/svg/filled/play_arrow.svg';
 import StopIcon from '@material-design-icons/svg/filled/stop.svg';
 
 import { useListItemPlayback } from '../useListItemPlayback.js';
+import { useSetDuplicates } from './useSetDuplicates.js';
 import { VOLCA_SLOT_COUNT } from '../setStore.js';
 import {
   CATEGORIES,
@@ -27,6 +28,13 @@ const SLOT_DRAG_TYPE = 'application/x-volca-slot-index';
 /** Samples longer than this take a noticeable bite out of the memory */
 const LONG_SAMPLE_SECONDS = 1.5;
 
+/**
+ * @typedef {{
+ *   level: 'same' | 'similar';
+ *   partners: { slot: number; level: 'same' | 'similar'; name: string }[];
+ * }} CellDuplicateInfo
+ */
+
 /** @param {number} slot */
 function formatSlot(slot) {
   return slot.toString().padStart(2, '0');
@@ -41,6 +49,9 @@ const SlotCell = React.memo(
    *   isFocused: boolean;
    *   isDropTarget: boolean;
    *   isOverflow: boolean;
+   *   isHighlighted: boolean;
+   *   duplicate: CellDuplicateInfo | null;
+   *   onHighlight: (slots: number[] | null) => void;
    *   onFocusSlot: (index: number) => void;
    *   onRemove: (id: string) => void;
    *   onEdit: (id: string) => void;
@@ -53,6 +64,9 @@ const SlotCell = React.memo(
     isFocused,
     isDropTarget,
     isOverflow,
+    isHighlighted,
+    duplicate,
+    onHighlight,
     onFocusSlot,
     onRemove,
     onEdit,
@@ -73,6 +87,7 @@ const SlotCell = React.memo(
           isPlaybackActive ? classes.playing : '',
           isDropTarget ? classes.dropTarget : '',
           isOverflow ? classes.overflow : '',
+          isHighlighted ? classes.highlighted : '',
         ].join(' ')}
         style={{
           // @ts-ignore
@@ -100,6 +115,28 @@ const SlotCell = React.memo(
       >
         <div className={classes.cellTop}>
           <span className={classes.slotNumber}>{formatSlot(index)}</span>
+          {duplicate && (
+            <span
+              className={`${classes.duplicateBadge} ${
+                classes[duplicate.level]
+              }`}
+              title={duplicate.partners
+                .map(
+                  (p) =>
+                    `${
+                      p.level === 'same' ? 'Same sound as' : 'Sounds like'
+                    } slot ${formatSlot(p.slot)} (${p.name})`
+                )
+                .join('\n')}
+              onMouseEnter={() =>
+                onHighlight([index, ...duplicate.partners.map((p) => p.slot)])
+              }
+              onMouseLeave={() => onHighlight(null)}
+            >
+              {duplicate.level === 'same' ? '=' : '≈'}
+              {duplicate.partners.map((p) => formatSlot(p.slot)).join(',')}
+            </span>
+          )}
           <span className={classes.cellIcon} aria-hidden="true">
             {isPlaybackActive ? <StopIcon /> : <PlayIcon />}
           </span>
@@ -174,6 +211,53 @@ const SlotGrid = React.memo(
 
     const slotCount = Math.max(VOLCA_SLOT_COUNT, activeSetSamples.length);
     const overflowCount = activeSetSamples.length - VOLCA_SLOT_COUNT;
+
+    const setDuplicates = useSetDuplicates(activeSetSamples);
+    const [highlightedSlots, setHighlightedSlots] = useState(
+      /** @type {number[] | null} */ (null)
+    );
+    /** @type {Map<string, CellDuplicateInfo>} */
+    const cellDuplicates = useMemo(() => {
+      const slotById = new Map(activeSetSamples.map((s, i) => [s.id, i]));
+      const cells = new Map();
+      for (const [id, info] of setDuplicates) {
+        const partners = info.partners
+          .filter((p) => slotById.has(p.id))
+          .map((p) => ({
+            slot: /** @type {number} */ (slotById.get(p.id)),
+            level: p.level,
+            name: activeSetSamples[/** @type {number} */ (slotById.get(p.id))]
+              .metadata.name,
+          }))
+          .sort((a, b) => a.slot - b.slot);
+        if (slotById.has(id) && partners.length) {
+          cells.set(id, {
+            level: partners.some((p) => p.level === 'same')
+              ? 'same'
+              : 'similar',
+            partners,
+          });
+        }
+      }
+      return cells;
+    }, [setDuplicates, activeSetSamples]);
+    // pairs of slots for the summary above the grid, each pair only once
+    const duplicatePairs = useMemo(() => {
+      /** @type {{ a: number; b: number; level: 'same' | 'similar' }[]} */
+      const pairs = [];
+      activeSetSamples.forEach((sample, slot) => {
+        const info = cellDuplicates.get(sample.id);
+        if (!info) return;
+        for (const partner of info.partners) {
+          if (partner.slot > slot) {
+            pairs.push({ a: slot, b: partner.slot, level: partner.level });
+          }
+        }
+      });
+      return pairs;
+    }, [cellDuplicates, activeSetSamples]);
+    const samePairs = duplicatePairs.filter((p) => p.level === 'same');
+    const similarPairs = duplicatePairs.filter((p) => p.level === 'similar');
 
     const breakdown = useMemo(() => {
       /** @type {Map<string, number>} */
@@ -303,6 +387,61 @@ const SlotGrid = React.memo(
           </div>
         </div>
 
+        {duplicatePairs.length > 0 && (
+          <div className={classes.duplicateSummary}>
+            {samePairs.length > 0 && (
+              <div>
+                <span className={`${classes.duplicateBadge} ${classes.same}`}>
+                  =
+                </span>{' '}
+                <strong>Same sound twice:</strong>{' '}
+                {samePairs.map((p, i) => (
+                  <React.Fragment key={`${p.a}-${p.b}`}>
+                    {i > 0 && ', '}
+                    <button
+                      type="button"
+                      className={classes.pairLink}
+                      onMouseEnter={() => setHighlightedSlots([p.a, p.b])}
+                      onMouseLeave={() => setHighlightedSlots(null)}
+                      onFocus={() => setHighlightedSlots([p.a, p.b])}
+                      onBlur={() => setHighlightedSlots(null)}
+                    >
+                      {formatSlot(p.a)} &amp; {formatSlot(p.b)}
+                    </button>
+                  </React.Fragment>
+                ))}
+                . Remove one to free a slot.
+              </div>
+            )}
+            {similarPairs.length > 0 && (
+              <div>
+                <span
+                  className={`${classes.duplicateBadge} ${classes.similar}`}
+                >
+                  ≈
+                </span>{' '}
+                <strong>Sounds alike:</strong>{' '}
+                {similarPairs.map((p, i) => (
+                  <React.Fragment key={`${p.a}-${p.b}`}>
+                    {i > 0 && ', '}
+                    <button
+                      type="button"
+                      className={classes.pairLink}
+                      onMouseEnter={() => setHighlightedSlots([p.a, p.b])}
+                      onMouseLeave={() => setHighlightedSlots(null)}
+                      onFocus={() => setHighlightedSlots([p.a, p.b])}
+                      onBlur={() => setHighlightedSlots(null)}
+                    >
+                      {formatSlot(p.a)} &amp; {formatSlot(p.b)}
+                    </button>
+                  </React.Fragment>
+                ))}
+                . Worth a listen.
+              </div>
+            )}
+          </div>
+        )}
+
         {overflowCount > 0 && (
           <div className={classes.overflowWarning}>
             This set has {overflowCount} sample{overflowCount === 1 ? '' : 's'}{' '}
@@ -367,6 +506,11 @@ const SlotGrid = React.memo(
                   isFocused={index === focusedIndex}
                   isDropTarget={dropIndex === index}
                   isOverflow={index >= VOLCA_SLOT_COUNT}
+                  isHighlighted={Boolean(
+                    highlightedSlots && highlightedSlots.includes(index)
+                  )}
+                  duplicate={cellDuplicates.get(sample.id) || null}
+                  onHighlight={setHighlightedSlots}
                   onFocusSlot={setFocusedIndex}
                   onRemove={(id) => removeFromSet([id])}
                   onEdit={onEdit}
