@@ -112,6 +112,7 @@ export async function importFilesToLibrary(
         },
         category: getCategoryFromFileName(file.name),
         sourceHash,
+        originalName: file.name.slice(0, lastDotIndex),
       });
       await sample.persist();
       const sampleCache = new SampleCache.Mutable({

@@ -50,6 +50,7 @@ import { getSamplePeaksForAudioBuffer } from './utils/waveform.js';
  * @property {string | null} [category]
  * @property {boolean} [favorite]
  * @property {string | null} [sourceHash]
+ * @property {string | null} [originalName] the name it was imported with
  */
 
 /**
@@ -70,6 +71,7 @@ import { getSamplePeaksForAudioBuffer } from './utils/waveform.js';
  * @property {string | null} category
  * @property {boolean} favorite
  * @property {string | null} sourceHash
+ * @property {string | null} originalName
  */
 
 /**
@@ -84,6 +86,7 @@ import { getSamplePeaksForAudioBuffer } from './utils/waveform.js';
  * @property {PluginClientSpec[]} [plugins]
  * @property {string | null} [category]
  * @property {boolean} [favorite]
+ * @property {string | null} [originalName]
  */
 
 /**
@@ -518,6 +521,7 @@ export class SampleContainer {
     category = null,
     favorite = false,
     sourceHash = null,
+    originalName = null,
   }) {
     /** @readonly */
     this.id = id;
@@ -541,6 +545,7 @@ export class SampleContainer {
       category,
       favorite,
       sourceHash,
+      originalName,
       metadataVersion: METADATA_VERSION,
     };
   }
@@ -605,6 +610,14 @@ export class SampleContainer {
         ...update,
         dateModified: new Date().toISOString(),
       };
+      // remember the name it had before its first rename
+      if (
+        update.name !== undefined &&
+        update.name !== metadata.name &&
+        !metadata.originalName
+      ) {
+        newMetadata.originalName = metadata.name;
+      }
       const newContainer = new SampleContainer.Mutable({ id, ...newMetadata });
       // async - does not block
       newContainer.persist().then(onPersisted);

@@ -168,6 +168,17 @@
   color: var(--vsm-text);
 }
 
+.renameInput {
+  font-size: 0.86rem;
+  font-weight: 600;
+  width: 100%;
+  min-width: 0;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid var(--vsm-accent);
+  border-radius: 0.25rem;
+  outline: none;
+}
+
 .favorite {
   color: var(--vsm-warning);
   margin-left: 0.3rem;
@@ -254,6 +265,7 @@
   font-size: 0.9rem;
 }
 
-.duplicatesButton {
-  align-self: flex-start;
+.collectionTools {
+  display: flex;
+  gap: 0.5rem;
 }

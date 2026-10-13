@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Button, Form, Modal } from 'react-bootstrap';
 import PlayIcon from '@material-design-icons/svg/filled/play_arrow.svg';
 import StopIcon from '@material-design-icons/svg/filled/stop.svg';
@@ -22,7 +29,7 @@ import {
 
 import classes from './LibraryPanel.module.scss';
 
-/** @typedef {import('../store').SampleContainer} SampleContainer */
+import { SampleContainer } from '../store.js';
 /** @typedef {import('../sampleCacheStore.js').SampleCache} SampleCache */
 
 /**
@@ -61,6 +68,8 @@ const LibraryRow = React.memo(
    *   onFocusRow: (index: number) => void;
    *   onCheck: (id: string, index: number, shiftKey: boolean) => void;
    *   onEdit: (id: string) => void;
+   *   isRenaming: boolean;
+   *   onRenameEnd: (id: string, name: string | null) => void;
    * }} props
    */
   function LibraryRow({
@@ -73,6 +82,8 @@ const LibraryRow = React.memo(
     onFocusRow,
     onCheck,
     onEdit,
+    isRenaming,
+    onRenameEnd,
   }) {
     const { isPlaybackActive, playbackProgress, togglePlayback } =
       useListItemPlayback(sampleCache);
@@ -97,7 +108,7 @@ const LibraryRow = React.memo(
           '--category-color': getCategoryColor(category),
           '--playback-progress': `${playbackProgress * 100}%`,
         }}
-        draggable
+        draggable={!isRenaming}
         onDragStart={(e) => {
           e.dataTransfer.setData(SAMPLE_DRAG_TYPE, sample.id);
           e.dataTransfer.effectAllowed = 'copy';
@@ -129,14 +140,53 @@ const LibraryRow = React.memo(
           {isPlaybackActive ? <StopIcon /> : <PlayIcon />}
         </span>
         <span className={classes.rowMain}>
-          <span className={classes.rowName} title={sample.metadata.name}>
-            {getDisplayName(sample.metadata.name)}
-            {sample.metadata.favorite && (
-              <span className={classes.favorite} aria-label="Favorite">
-                ★
-              </span>
-            )}
-          </span>
+          {isRenaming ? (
+            <input
+              className={classes.renameInput}
+              aria-label={`New name for ${sample.metadata.name}`}
+              defaultValue={sample.metadata.name}
+              autoFocus
+              onFocus={(e) => e.target.select()}
+              onKeyDown={(e) => {
+                // keep the list from handling arrows and space
+                e.stopPropagation();
+                if (e.key === 'Enter' || e.key === 'Escape') {
+                  // the blur that follows shouldn't save again
+                  e.currentTarget.dataset.done = 'true';
+                  onRenameEnd(
+                    sample.id,
+                    e.key === 'Enter' ? e.currentTarget.value : null
+                  );
+                }
+              }}
+              onBlur={(e) => {
+                if (!e.target.dataset.done) {
+                  onRenameEnd(sample.id, e.target.value);
+                }
+              }}
+            />
+          ) : (
+            <span
+              className={classes.rowName}
+              title={[
+                sample.metadata.name,
+                sample.metadata.originalName &&
+                sample.metadata.originalName !== sample.metadata.name
+                  ? `Original: ${sample.metadata.originalName}`
+                  : '',
+                sample instanceof SampleContainer.Mutable ? 'F2 to rename' : '',
+              ]
+                .filter(Boolean)
+                .join('\n')}
+            >
+              {getDisplayName(sample.metadata.name)}
+              {sample.metadata.favorite && (
+                <span className={classes.favorite} aria-label="Favorite">
+                  ★
+                </span>
+              )}
+            </span>
+          )}
           <span className={classes.rowMeta}>
             <span className={classes.categoryDot} />
             {getCategoryLabel(category)}
@@ -203,6 +253,7 @@ const LibraryPanel = React.memo(
    *   onAddToSet: (ids: string[]) => void;
    *   onFindDuplicates: () => void;
    *   onTrimSilence: (ids: string[]) => void;
+   *   onTidyNames: (ids: string[] | null) => void;
    * }} props
    */
   function LibraryPanel({
@@ -217,6 +268,7 @@ const LibraryPanel = React.memo(
     onAddToSet,
     onFindDuplicates,
     onTrimSilence,
+    onTidyNames,
   }) {
     const [source, setSource] = useState(
       /** @type {'collection' | 'factory'} */ (
@@ -312,8 +364,38 @@ const LibraryPanel = React.memo(
     /** @type {React.RefObject<HTMLUListElement>} */
     const listRef = useRef(null);
 
+    const [renamingId, setRenamingId] = useState(
+      /** @type {string | null} */ (null)
+    );
+    const handleRenameEnd = useCallback(
+      /**
+       * @param {string} id
+       * @param {string | null} name null to cancel
+       */
+      (id, name) => {
+        setRenamingId((renamingId) => (renamingId === id ? null : renamingId));
+        if (name !== null && name.trim()) {
+          onSampleUpdate(id, { name: name.trim() });
+        }
+        // back to the list for the keyboard
+        setTimeout(() => {
+          const row = listRef.current?.querySelector('[tabindex="0"]');
+          if (row instanceof HTMLElement) row.focus();
+        });
+      },
+      [onSampleUpdate]
+    );
+
     /** @type {React.KeyboardEventHandler} */
     const handleKeyDown = (e) => {
+      if (e.key === 'F2') {
+        const sample = visibleSamples[focusedIndex];
+        if (sample && sample instanceof SampleContainer.Mutable) {
+          e.preventDefault();
+          setRenamingId(sample.id);
+        }
+        return;
+      }
       if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== ' ') {
         return;
       }
@@ -377,15 +459,25 @@ const LibraryPanel = React.memo(
               userSamples={userSamples}
               onBulkImport={onBulkImport}
             />
-            <Button
-              size="sm"
-              variant="outline-secondary"
-              className={classes.duplicatesButton}
-              disabled={userSamples.size < 2}
-              onClick={onFindDuplicates}
-            >
-              Find duplicates
-            </Button>
+            <div className={classes.collectionTools}>
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                disabled={userSamples.size < 2}
+                onClick={onFindDuplicates}
+              >
+                Find duplicates
+              </Button>
+              <Button
+                size="sm"
+                variant="outline-secondary"
+                disabled={!userSamples.size}
+                onClick={() => onTidyNames(null)}
+                title="Clean up names and fix wrong categories"
+              >
+                Tidy names
+              </Button>
+            </div>
           </>
         )}
 
@@ -454,6 +546,13 @@ const LibraryPanel = React.memo(
                 </Button>
                 <Button
                   size="sm"
+                  variant="outline-secondary"
+                  onClick={() => onTidyNames(checkedList.map((s) => s.id))}
+                >
+                  Tidy names
+                </Button>
+                <Button
+                  size="sm"
                   variant="outline-danger"
                   onClick={() => setConfirmDelete(true)}
                 >
@@ -493,6 +592,8 @@ const LibraryPanel = React.memo(
                 onFocusRow={setFocusedIndex}
                 onCheck={handleCheck}
                 onEdit={onEdit}
+                isRenaming={renamingId === sample.id}
+                onRenameEnd={handleRenameEnd}
               />
             ))
           ) : (

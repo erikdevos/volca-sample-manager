@@ -16,6 +16,7 @@ import SlotGrid from './manager/SlotGrid.js';
 import LibraryPanel from './manager/LibraryPanel.js';
 import DuplicatesModal from './manager/DuplicatesModal.js';
 import TrimSilenceModal from './manager/TrimSilenceModal.js';
+import TidyNamesModal from './manager/TidyNamesModal.js';
 import { useVolcaSets, VolcaSetContext } from './useVolcaSets.js';
 import { useDeviceState } from './useDeviceState.js';
 import { VOLCA_SLOT_COUNT } from './setStore.js';
@@ -663,6 +664,21 @@ function App() {
     [trimTarget]
   );
 
+  const [tidyTarget, setTidyTarget] = useState(
+    /** @type {{ title: string; sampleIds: string[] } | null} */ (null)
+  );
+  const tidySamples = useMemo(
+    () =>
+      /** @type {SampleContainer[]} */ (
+        (tidyTarget ? tidyTarget.sampleIds : [])
+          .map((id) => allSamples.get(id))
+          .filter(Boolean)
+      ),
+    // only take the samples as they are when the modal opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tidyTarget]
+  );
+
   return (
     <VolcaSetContext.Provider value={volcaSetContextValue}>
       <div className={classes.app}>
@@ -727,6 +743,16 @@ function App() {
                   title: 'Trim silence in selected samples',
                   sampleIds,
                 })
+              }
+              onTidyNames={(sampleIds) =>
+                setTidyTarget(
+                  sampleIds
+                    ? { title: 'Tidy names of selected samples', sampleIds }
+                    : {
+                        title: 'Tidy names in your collection',
+                        sampleIds: [...userSamples.keys()],
+                      }
+                )
               }
             />
           </div>
@@ -797,6 +823,16 @@ function App() {
           title={trimTarget ? trimTarget.title : ''}
           samples={trimSamples}
           onHide={() => setTrimTarget(null)}
+          onSampleUpdate={handleSampleUpdate}
+        />
+
+        <TidyNamesModal
+          show={Boolean(tidyTarget)}
+          title={tidyTarget ? tidyTarget.title : ''}
+          samples={tidySamples}
+          userSamples={userSamples}
+          factorySamples={factorySamples}
+          onHide={() => setTidyTarget(null)}
           onSampleUpdate={handleSampleUpdate}
         />
 

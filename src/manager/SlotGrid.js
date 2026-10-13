@@ -127,9 +127,18 @@ const SlotCell = React.memo(
           if (/** @type {HTMLElement} */ (e.target).closest('button')) return;
           onEdit(sample.id);
         }}
-        title={`${sample.metadata.name}\n${getCategoryLabel(category)}${
-          syncMark ? `\n${syncMark.title}` : ''
-        }\nClick to play · double-click to edit · drag to move`}
+        title={[
+          sample.metadata.name,
+          sample.metadata.originalName &&
+          sample.metadata.originalName !== sample.metadata.name
+            ? `Original: ${sample.metadata.originalName}`
+            : '',
+          getCategoryLabel(category),
+          syncMark ? syncMark.title : '',
+          'Click to play · double-click to edit · drag to move',
+        ]
+          .filter(Boolean)
+          .join('\n')}
       >
         <div className={classes.cellTop}>
           <span className={classes.slotNumber}>
