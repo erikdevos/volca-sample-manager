@@ -10,11 +10,19 @@ const Footer = React.memo(function Footer() {
     <>
       <div className={classes.footer}>
         <p>
-          <strong>Volca Sampler</strong> is an app created by{' '}
+          <strong>Volca Sample Manager</strong> is built on{' '}
+          <a
+            href="https://github.com/benwiley4000/volca-sampler"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Volca Sampler
+          </a>{' '}
+          by{' '}
           <a href="https://benwiley.org" target="_blank" rel="noreferrer">
             Ben Wiley
-          </a>
-          .
+          </a>{' '}
+          (MIT license).
         </p>
         <p>
           <strong>volca sample</strong> is a trademark of{' '}
@@ -23,7 +31,7 @@ const Footer = React.memo(function Footer() {
         <p>
           The source code can be found on{' '}
           <a
-            href="https://github.com/benwiley4000/volca-sampler"
+            href="https://github.com/erikdevos/volca-sample-manager"
             target="_blank"
             rel="noreferrer"
           >
@@ -67,10 +75,10 @@ const Footer = React.memo(function Footer() {
         </Modal.Header>
         <Modal.Body>
           <p>
-            <strong>Volca Sampler</strong> can be downloaded and run offline if
-            you prefer!
+            <strong>Volca Sample Manager</strong> can be downloaded and run
+            offline if you prefer!
           </p>
-          <p>How to run Volca Sampler offline:</p>
+          <p>How to run it offline:</p>
           <ol>
             <li>
               Install{' '}
@@ -85,16 +93,16 @@ const Footer = React.memo(function Footer() {
             </li>
             <li>
               Download the{' '}
-              <a href="Volca-Sampler-Offline.zip" download>
+              <a href="Volca-Sample-Manager-Offline.zip" download>
                 zipped app
               </a>{' '}
               and extract the contents.
             </li>
             <li>
-              Run <code>VOLCASAMPLER.py</code> with Python 3. You can open
+              Run <code>serve-offline.py</code> with Python 3. You can open
               Command Prompt on Windows, or a Terminal on macOS and Linux, to{' '}
-              <code>Volca-Sampler-Offline/</code> and run{' '}
-              <code>python3 VOLCASAMPLER.py</code>.
+              <code>Volca-Sample-Manager-Offline/</code> and run{' '}
+              <code>python3 serve-offline.py</code>.
             </li>
             <li>
               Normally,{' '}
@@ -131,7 +139,7 @@ const Footer = React.memo(function Footer() {
         onHide={() => setShowingFAQModal(false)}
       >
         <Modal.Header>
-          <Modal.Title id="faq-modal">About Volca Sampler</Modal.Title>
+          <Modal.Title id="faq-modal">FAQ / Licenses</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <FAQAndLicensesContent />
@@ -166,18 +174,15 @@ function FAQAndLicensesContent() {
         data to be sent to the <strong>volca sample</strong>.
       </p>
       <p>
-        Big thanks to Blairman and to{' '}
+        The sample transfer is based on{' '}
         <a
-          href="https://soundcloud.com/southtechnique"
+          href="https://github.com/benwiley4000/volca-sampler"
           target="_blank"
           rel="noreferrer"
         >
-          Costas Chris
+          Volca Sampler
         </a>{' '}
-        for helping to test the alpha version!
-      </p>
-      <p>
-        And thanks again to KORG for developing the{' '}
+        by Ben Wiley, which was inspired by KORG's{' '}
         <a
           href="https://apps.apple.com/us/app/audiopocket-for-volca-sample/id927415821"
           target="_blank"
@@ -185,7 +190,7 @@ function FAQAndLicensesContent() {
         >
           AudioPocket
         </a>{' '}
-        app, which inspired the core functionality of Volca Sampler.
+        app.
       </p>
       <h3>FAQ</h3>
       <div className={classes.qAndA}>
@@ -219,38 +224,28 @@ function FAQAndLicensesContent() {
       </div>
       <div className={classes.qAndA}>
         <p>
-          <strong>Q: Can I export my samples to another device?</strong>
+          <strong>Q: Can I move my samples to another device?</strong>
         </p>
         <p>
-          A: The answer recently became "yes"! To export a zip file that can be
-          imported from a different device and/or different web browser, choose
-          "Select multiple" above the sample list, select the samples you want
-          to export, and hit "backup". To import, choose "Load from Volca
-          Sampler backup".
+          A: Yes. Choose <strong>Volca → Backup &amp; restore</strong> to
+          download a zip with your collection, sets and what's on your volca,
+          and restore it in another browser or on another device.
         </p>
       </div>
       <div className={classes.qAndA}>
         <p>
-          <strong>Q: Where can I contact you?</strong>
+          <strong>Q: Found a bug or have an idea?</strong>
         </p>
         <p>
-          A:{' '}
+          A: File an issue on{' '}
           <a
-            href="mailto:therealbenwiley@gmail.com?subject=Volca Sampler"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Email
-          </a>{' '}
-          to get in touch with me personally, or{' '}
-          <a
-            href="https://github.com/benwiley4000/volca-sampler/issues"
+            href="https://github.com/erikdevos/volca-sample-manager/issues"
             target="_blank"
             rel="noreferrer"
           >
             GitHub
-          </a>{' '}
-          to file an issue with this app.
+          </a>
+          .
         </p>
       </div>
       <h3>Licenses</h3>
@@ -287,6 +282,18 @@ function FAQAndLicensesContent() {
         LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
         NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
         SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+      </p>
+      <h5>Volca Sampler</h5>
+      <p>
+        Copyright (c) 2021 Ben Wiley. Released under the MIT License, see the{' '}
+        <a
+          href="https://github.com/erikdevos/volca-sample-manager/blob/main/LICENSE"
+          target="_blank"
+          rel="noreferrer"
+        >
+          full license
+        </a>
+        .
       </p>
       <h5>Other open source licenses</h5>
       <p>

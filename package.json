@@ -1,5 +1,5 @@
 {
-  "name": "volca-sampler",
+  "name": "volca-sample-manager",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -37,7 +37,7 @@
     "test:slots": "node test/setSlots.test.js | tap-spec-emoji",
     "test:names": "node test/names.test.js | tap-spec-emoji",
     "eject": "react-scripts eject",
-    "zip": "rimraf build/Volca-Sampler-Offline.zip && rimraf Volca-Sampler-Offline && cp -r build Volca-Sampler-Offline && bestzip build/Volca-Sampler-Offline.zip Volca-Sampler-Offline/* && rimraf Volca-Sampler-Offline"
+    "zip": "rimraf build/Volca-Sample-Manager-Offline.zip && rimraf Volca-Sample-Manager-Offline && cp -r build Volca-Sample-Manager-Offline && bestzip build/Volca-Sample-Manager-Offline.zip Volca-Sample-Manager-Offline/* && rimraf Volca-Sample-Manager-Offline"
   },
   "homepage": ".",
   "eslintConfig": {
