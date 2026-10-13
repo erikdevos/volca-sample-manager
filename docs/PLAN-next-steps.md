@@ -1,71 +1,61 @@
-# Plan: volgende twee stappen
+# Plan: Volca-stand bijhouden + namen opschonen
 
-Status bij het schrijven (13-10-2026): de app werkt end-to-end en een echte transfer naar de Volca Sample v1 is gelukt (commit `dd92afd`). Dev-server: Node 16 (`.nvmrc`), `npm start` via `.claude/launch.json` ("dev"); WASM bouwen met `./build-bindings.sh` (emcc 6.x, zie de fixes in dat script en in `syro/`).
+## Context
+De app werkt end-to-end; een echte transfer naar Eriks Volca Sample v1 is gelukt (commit `dd92afd`, plan-doc `docs/PLAN-next-steps.md` in `54c356e`). Twee wensen van Erik:
+1. Een volle set sturen duurt ~13 min. De app moet **onthouden wat er op de Volca staat**, per slot laten zien of het al op de Volca staat, en bij transfer laten **kiezen**: alleen wijzigingen (standaard) of alles. Slots die op de Volca staan maar niet meer in de set, worden in dezelfde stream gewist.
+2. **Namen opschonen**: nummer en pack-codes weg, typo's corrigeren, volgnummers bij dubbele namen. Naamstijl: **categorie eerst** ("Snare Thunder"). Plus de verkeerd ingedeelde conga (`057-kick`) corrigeren.
+
+Werkwijze: Node 16 (`export PATH=~/.nvm/versions/node/v16.20.2/bin:$PATH`), dev-server "dev" via `.claude/launch.json`, WASM via `./build-bindings.sh`, Prettier 2.8.8 voor opmaak. Committen pas na akkoord van Erik.
 
 ---
 
-## Stap 1: weten wat er op de Volca staat, alleen wijzigingen sturen
+## Stap 1: Volca-stand bijhouden, alleen wijzigingen sturen
 
-**Waarom.** Een volle set sturen duurt ca. 12–13 minuten. Na kleine wijzigingen (een paar samples gewisseld) wil je alleen die slots sturen. En slots die nog op de Volca staan maar niet meer in je set zitten, kosten geheugen: die moeten gewist worden.
+**1. Device-snapshot** — nieuw `src/deviceStore.js` (localforage `volca_device`, één record):
+`{ known: boolean, slots: (null | { sampleId, contentKey, name })[100], updatedAt }`. Start: `known: false`.
+- `getContentKey(sample)` in `src/sampleCacheStore.js`, naast `hasAudioRelevantChanges` (zelfde velden: `sourceFileId`, `trim.frames`, `normalize`, `pitchAdjustment`, `qualityBitDepth`, `plugins`; niet `useCompression`).
+- Hook `useDeviceState()` (nieuw `src/useDeviceState.js`) met `recordTransfer(samplesWithSlots)`, `recordErase(slots)`, `recordEraseAll()`, `recordFactory(factorySamples)`, `markUnknown()`.
 
-**Aanpak**
+**2. Snapshot bijwerken na geslaagde acties** ("geslaagd" = transfergeluid helemaal afgespeeld, `transferProgress >= 1` in `useSyroTransfer`, `src/utils/syro.js`):
+- Set-transfer: callback `onTransferComplete(items)` toevoegen aan `src/VolcaTransferControl.js`, aangeroepen vanuit `src/manager/TopBar.js`.
+- `src/manager/AllDataTransferModal.js`: eraseAll → `recordEraseAll`, restoreFactory → `recordFactory` (factory-ids op slot 0–99).
+- `src/VolcaEraseSlotsModals.js`: callback na afloop → `recordErase(slots)`.
+- Na elke transfer in het afrondscherm: link "Volca showed an error? Mark state as unknown".
 
-1. **Device-snapshot bijhouden** (nieuw: `src/deviceStore.js`, localforage `volca_device`).
-   - Per slot 0–99: `{ sampleId, contentKey, name }` of `null` (leeg), plus `updatedAt` en `known: boolean`.
-   - `contentKey` = alles wat het verstuurde geluid bepaalt: `sourceFileId`, `trim.frames`, `normalize`, `pitchAdjustment`, `qualityBitDepth`, `JSON.stringify(plugins)`. (Niet `useCompression`: die verandert het resultaat op het apparaat niet.) Helper `getContentKey(sample)` naast `hasAudioRelevantChanges` in `src/sampleCacheStore.js`.
-   - Start: `known: false` ("onbekend", want we weten niet wat er nu op staat).
-2. **Snapshot bijwerken na elke geslaagde actie.** "Geslaagd" = het transfergeluid is helemaal afgespeeld (`transferProgress >= 1` in `useSyroTransfer`). De Volca stuurt niets terug, dus dit is een aanname: na afloop tonen we "Showed the volca an error? → Mark slots as unknown".
-   - Set-transfer (`src/manager/TopBar.js` via `VolcaTransferControl`): verstuurde slots krijgen de nieuwe inhoud. Een callback `onTransferComplete(samples)` toevoegen aan `VolcaTransferControl.js`.
-   - "Erase all" (`AllDataTransferModal`): alles leeg, `known: true`.
-   - "Restore factory": slots = factory-ids met hun `contentKey`, `known: true`.
-   - "Erase specific slots" (`VolcaEraseSlotsModals.js`): die slots leeg. Callback toevoegen.
-3. **Verschil berekenen** (`src/utils/deviceDiff.js`, puur, met unit-test): voor set vs. snapshot per slot `unchanged | changed | new | toErase` (slot staat op de Volca maar is leeg in de set). Bij `known: false` is alles "changed".
-4. **Transfer-keuze** in de bevestigingsstap van de set-transfer:
-   - Standaard "Only changes (N slots, ~X min)", alternatief "Everything (~Y min)".
-   - Slots in `toErase` worden in **dezelfde stream** meegestuurd als erase-opdracht. Hiervoor `buildSyroBuffer` in `src/utils/syro.js` laten mixen: samples via `createSyroDataFromWavData`, wissen via `createEmptySyroData`.
-   - **Verifiëren** vóór gebruik: een gemengde stream (bijv. 2 samples + 2 erases) byte-vergelijken met KORG's eigen voorbeeldprogramma (native gecompileerd uit `syro/volcasample/example/`, args zoals `s10c:file.wav` en `e5:`), net zoals bij de alldata-check. Pas daarna inschakelen.
-5. **Zichtbaar maken in het raster** (`src/manager/SlotGrid.js`):
-   - Klein statuspuntje per slot: "on volca" (grijs), "changed/new" (blauw), "will be erased" (lege slot met streep).
-   - Bovenbalk/meter: tekst "Volca: in sync" / "12 slots to update" / "Volca state unknown". Knop "Mark volca as unknown" in het Volca-menu.
+**3. Diff** — nieuw `src/utils/deviceDiff.js` (puur): per slot `unchanged | changed | new | erase` (op Volca, leeg in set) en totaal-overzicht; bij `known: false` alles "changed" en geen "erase". Unit-test `test/deviceDiff.test.js` (zelfde opzet als `test/categories.test.js`, `npm run test:...` script toevoegen).
 
-**Verificatie**
-- Unit-test voor `deviceDiff` (nieuw / gewijzigd / ongewijzigd / te wissen / onbekend).
-- Byte-vergelijking gemengde stream tegen KORG-native (zie 4).
-- Bestaande snapshots blijven identiek (`test/snapshots`, zie de check in de browser zoals eerder gedaan).
-- In de browser: set sturen (afspelen laten "slagen" via rAF-polyfill), sample wisselen, dan moet "Only changes" precies 1 slot tonen; set inkorten, dan moeten de oude slots als "to erase" verschijnen.
+**4. Gemengde stream (samples + wissen)** in `buildSyroBuffer` (`src/utils/syro.js`): `getSyroSetBuffer(samples, eraseSlots)` vult samples via `createSyroDataFromWavData` en wissen via `createEmptySyroData` (bestaat al in `syro/syro-bindings.c`; worker kopieert `pData` met `Size 0` veilig).
+- **Eerst verifiëren**: KORG-voorbeeld native compileren (`cc … syro/volcasample/example/korg_syro_volcasample_example.c syro/volcasample/syro/*.c` in scratchpad), stream maken met 2 samples + 2 erases (args `s2c:file.wav`, `e5:` …), byte-vergelijken met de browseruitvoer (tijdelijke `public/_ref`, daarna verwijderen). Ook de 4 bestaande `test/snapshots` opnieuw checken. Als erase via `createEmptySyroData` afwijkt: in C een `createEraseSyroData` met `DataType_Sample_Erase` toevoegen.
+
+**5. Keuze bij transfer** (`TopBar.js` / bevestigingsstap van `VolcaTransferControl`): twee opties met tijdsinschatting: "Only changes (N slots + M to erase, ~X)" (standaard als `known`) en "Everything (~Y)". Bij `known: false` alleen "Everything", met uitleg. Knop in de bovenbalk toont "Transfer changes (N)" of "In sync".
+
+**6. Zichtbaar in het raster** (`src/manager/SlotGrid.js` + `.module.scss`):
+- Per gevulde slot een statusmarkering: **on volca** (klein vinkje/groen puntje), **changed/new** (blauw puntje "will be sent").
+- Lege slot waar nog iets op de Volca staat: gestreepte achtergrond + naam van wat er staat, "will be erased".
+- Samenvatting naast de meters: "Volca: in sync" / "12 to send, 3 to erase" / "Volca state unknown". In het Volca-menu: "Mark volca state as unknown".
+
+## Stap 2: Namen opschonen en categorieën corrigeren
+
+**1. Opschoner** — nieuw `src/utils/names.js` (puur), hergebruikt `getFileNameWords`, `getDisplayName`, `CATEGORIES`, `getCategoryLabel` uit `src/utils/categories.js`:
+- Nummer vooraan weg; pack-codes weg: tokens met letters+cijfers (`BD1050`, `OH25`, `Clp01`, `CY0000`, `SD7575`, `Dist_Bd1`) en vastgeplakte restanten (`snareldk28` → `snare`).
+- Typo's: `hithat` → `hihat` (lijst uitbreidbaar).
+- Stijl **categorie eerst**: categorienaam + overige betekenisvolle woorden in Title Case: `011-snare-Thunder Snare` → "Snare Thunder", `011-snare-707 Slammed` → "Snare 707 Slammed", `037-hihat-open` → "Hihat Open".
+- Dubbele namen binnen een categorie nummeren met twee cijfers in sorteervolgorde: "Kick 01" … "Kick 15" (aanname: `01`-stijl sorteert netjes; makkelijk aan te passen).
+- Unit-test op alle namen in `samples/`: geen lege namen, geen dubbelen, geen pack-codes over, verwachte voorbeelden kloppen.
+
+**2. "Tidy names"-scherm** — nieuw `src/manager/TidyNamesModal.js` (opzet als `TrimSilenceModal.js`): bron = hele collectie of selectie (knoppen in `src/manager/LibraryPanel.js`), opties als schakelaars, preview "old → new" met vinkje per rij, toepassen via `onSampleUpdate(id, { name })` (geen audio-herberekening dankzij `hasAudioRelevantChanges`).
+- `originalName` in metadata (`src/store.js`: param + typedef; gezet bij import in `src/utils/libraryImport.js`; voor bestaande samples bij eerste hernoeming) en als tooltip tonen in lijst en raster.
+
+**3. Categorie-correcties** in hetzelfde scherm, sectie "Category suggestions" vóór het hernoemen:
+- Samples die (bijna) identiek zijn aan een factory-sample met een andere categorie (via `findDuplicates` uit `src/utils/duplicates.js`, drempel `DUPLICATE_THRESHOLD`) → stel de factory-categorie voor. Zo wordt `057-kick` → Percussion (conga) voorgesteld en daarna netjes "Perc Conga…/Percussion 0x" genoemd.
+- Toepassen via `onSampleUpdate(id, { category })`; hernoemen gebruikt daarna de nieuwe categorie.
+
+**4. Snel hernoemen**: F2 / potlood in `LibraryPanel` rij → inline invoerveld (Enter opslaan, Esc annuleren).
+
+## Verificatie
+- `npm run test:categories` + nieuwe tests (`deviceDiff`, `names`) groen.
+- Byte-identiek: gemengde stream vs. KORG-native; 4 bestaande snapshots; alldata ongewijzigd.
+- Browser (ingebouwde pane, rAF-polyfill voor verborgen pane): set sturen → raster toont alles "on volca", "In sync"; sample wisselen → "Only changes (1)"; set inkorten → oude slots "will be erased"; Erase all / Restore factory / Erase slots werken de stand bij; herladen behoudt de stand.
+- Tidy names: preview klopt voor de 128 samples, conga-suggestie verschijnt, toepassen + herladen behoudt namen, herimport herkent samples nog (hash), sets en duplicaten werken nog.
 - Erik test op het apparaat: kleine wijziging sturen en controleren dat alleen die slots veranderen.
-
----
-
-## Stap 2: namen opschonen en categorieën corrigeren
-
-**Waarom.** Veel samples heten na het weglaten van het nummer gewoon "kick" of "snare"; de restanten uit de oorspronkelijke packs (`BD1050`, `OH25`, `ldk28`, `Clp01`, `CY0000`, `SD7575`) zijn niet relevant. Sommige categorieën kloppen niet (`057-kick` is eigenlijk de factory-conga).
-
-**Aanpak**
-
-1. **Naam-opschoner** (`src/utils/names.js`, puur, met unit-test op alle namen in `samples/`):
-   - Nummer vooraan weg (bestaat al: `getDisplayName` in `src/utils/categories.js`).
-   - Optioneel bron-codes weg: losse tokens van letters+cijfers zoals `BD1050`, `OH25`, `Clp01`, `CY0000`; vastgeplakt zoals `snareldk28` → `snare`. Woorden die iets zeggen (`Thunder Snare`, `707 Slammed`, `Deep`) blijven.
-   - Typo's corrigeren (`hithat` → `hihat`), dubbele categorie-woorden samenvoegen.
-   - Uniek maken binnen een categorie: dubbele namen nummeren (`Kick 01` … `Kick 15`), in de huidige sorteervolgorde.
-   - Hoofdletters: optioneel "Title Case".
-2. **"Tidy names"-scherm** (`src/manager/TidyNamesModal.js`), zelfde opzet als `TrimSilenceModal`:
-   - Bron: hele collectie of de selectie (knop in de selectiebalk van `LibraryPanel` en in de collectie-header).
-   - Opties als schakelaars (bovenstaande punten), live preview-tabel "oud → nieuw", vinkje per rij, "Rename N samples".
-   - Toepassen via `onSampleUpdate(id, { name })`. Hernoemen raakt de audio niet (geen herberekening, dankzij `hasAudioRelevantChanges`).
-   - De oorspronkelijke bestandsnaam bewaren in metadata (`originalName`, gezet bij import in `src/utils/libraryImport.js`; voor bestaande samples bij eerste hernoeming vullen) en tonen als tooltip, zodat je altijd het bronbestand terugvindt.
-3. **Snel hernoemen en categorie wijzigen in de lijst** (`LibraryPanel` / `SlotGrid`):
-   - F2 of een potlood-actie op een rij → inline naamveld.
-   - Categorie-keuze in het bewerkpaneel bestaat al; in de duplicatenlijst ook. Extra: in de collectie een filter "Check category" voor samples waarvan de opgeslagen categorie afwijkt van wat de naam (na hernoemen) suggereert, of die als factory-duplicaat een andere categorie hebben (zoals `057-kick`).
-4. **Categorie volgt naam?** Bij hernoemen de categorie niet automatisch veranderen; wel een hint tonen als de nieuwe naam op een andere categorie wijst.
-
-**Verificatie**
-- Unit-test `names.js` op alle 128 bestandsnamen: geen lege namen, geen dubbele namen binnen een categorie, bron-codes weg, betekenisvolle woorden behouden. Een paar verwachte uitkomsten vastleggen (bijv. `011-snare-Thunder Snare` → `Thunder Snare` of `Snare Thunder`, nog kiezen).
-- In de browser: preview controleren, toepassen, herladen (namen blijven), en checken dat herimport van de map de samples nog herkent (hash op bestand, dus naamonafhankelijk).
-- Duplicaat-detectie, sets en transfer werken nog (namen spelen daar geen rol, behalve in de weergave).
-
-**Open vraag voor Erik (bij de start van stap 2):** naamstijl: `Thunder Snare` (beschrijving eerst) of `Snare Thunder` (categorie eerst)? En nummeren als `Kick 01` of `Kick 1`?
-
----
-
-Volgorde: stap 1 eerst (meeste tijdwinst bij transfers), dan stap 2. Na elke stap: tests, browsercheck, commit (na akkoord van Erik).
+- Na elke stap: screenshot naar Erik, commit na akkoord.
