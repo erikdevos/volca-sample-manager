@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "/bin/zsh",
+      "runtimeArgs": ["-c", "export PATH=$HOME/.nvm/versions/node/v16.20.2/bin:$PATH && BROWSER=none PORT=3000 npm start"],
+      "port": 3000
+    }
+  ]
+}

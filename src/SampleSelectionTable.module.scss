@@ -1,0 +1,43 @@
+@import 'bootstrap_custom_variables';
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/mixins';
+@import 'bootstrap/scss/variables';
+
+.samplesTable {
+  table-layout: fixed;
+
+  &:not(:last-child) {
+    margin-bottom: 2rem;
+  }
+
+  td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  tbody tr {
+    cursor: pointer;
+  }
+
+  .check {
+    width: 2rem;
+  }
+
+  .slotNumber {
+    width: 3rem;
+  }
+
+  .updated {
+    width: 7rem;
+  }
+
+  .pluginsOk {
+    width: 2.5rem;
+  }
+
+  .duplicateSlot {
+    color: var(--bs-primary);
+    font-weight: bold;
+  }
+}

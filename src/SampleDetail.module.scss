@@ -1,0 +1,104 @@
+@import 'bootstrap_custom_variables';
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/mixins';
+@import 'bootstrap/scss/variables';
+
+.sampleName {
+  display: flex;
+  justify-content: space-between;
+
+  @include media-breakpoint-up(lg) {
+    flex-wrap: wrap;
+  }
+
+  span {
+    align-self: center;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    // avoid clipping text above and below due to overflow hidden
+    margin: -0.5rem 0;
+    padding: 0.5rem 0;
+
+    @include media-breakpoint-up(lg) {
+      width: 100%;
+    }
+  }
+}
+
+.optionsButton {
+  margin-left: 1rem;
+  font-family: var(--body-font-family);
+
+  @include media-breakpoint-up(lg) {
+    display: none;
+  }
+}
+
+.actionButtons {
+  font-family: var(--body-font-family);
+  margin: 1rem 0 0.5rem;
+  display: none;
+
+  button:not(:last-child) {
+    margin-right: 0.5rem;
+  }
+
+  @include media-breakpoint-up(lg) {
+    display: unset;
+  }
+}
+
+.deleteModalHeader {
+  justify-content: flex-start;
+
+  & > svg {
+    fill: var(--bs-primary);
+    margin-right: 1rem;
+    transform: scale(calc(2 / 1.5));
+  }
+}
+
+.normalizeControlWrapper {
+  display: inline-block;
+  margin-bottom: $spacer * 2;
+}
+
+.slotNumber {
+  --slot-bg-color: var(--bs-dark);
+  --slot-width: 160px;
+  --slot-padding: 0.25rem;
+  background-color: var(--slot-bg-color);
+  display: inline-block;
+  width: var(--slot-width);
+  padding: var(--slot-padding);
+  border-radius: var(--slot-padding);
+  position: relative;
+  cursor: text;
+
+  & > svg {
+    width: calc(var(--slot-width) - var(--slot-padding) * 2);
+    transform: skewX(-4deg);
+
+    // digits background
+    &:first-child {
+      position: absolute;
+      top: 0.25rem;
+      opacity: 0.4;
+    }
+
+    polygon {
+      stroke: var(--slot-bg-color);
+    }
+
+    g:nth-last-child(3),
+    g:nth-last-child(2),
+    g:nth-last-child(1) {
+      pointer-events: bounding-box;
+    }
+
+    circle.point {
+      fill: var(--bs-primary);
+    }
+  }
+}

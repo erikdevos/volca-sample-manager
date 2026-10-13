@@ -1,0 +1,42 @@
+$h1-font-size: 3.5rem;
+$primary: #e50b0b;
+$progress-bar-transition: none; // progress is incorrect otherwise
+$list-group-active-color: var(--bs-dark);
+$accordion-button-active-bg: transparent;
+$list-group-active-bg: rgba($primary, 0.04);
+$font-family-sans-serif: var(--body-font-family);
+$form-switch-width: 2.5em;
+.form-switch > .form-check-input {
+  height: 1.25em;
+}
+.nav-pills > .nav-item > .nav-link {
+  &.active {
+    background-color: var(--bs-secondary) !important;
+  }
+  &:not(.active) {
+    color: var(--bs-dark);
+  }
+}
+.modal,
+.modal-dialog,
+.modal-content {
+  display: flex !important;
+  flex-direction: column;
+  min-height: 0;
+}
+.modal-body {
+  overflow-y: auto;
+}
+
+input:checked {
+  accent-color: var(--bs-primary);
+}
+
+mark {
+  padding: 0 !important;
+  background-color: var(--bs-warning-bg-subtle);
+}
+
+:root {
+  --bs-primary-darkened: #{darken($primary, 20%)};
+}

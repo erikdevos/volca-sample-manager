@@ -1,0 +1,258 @@
+@import 'bootstrap_custom_variables';
+@import 'bootstrap/scss/functions';
+@import 'bootstrap/scss/variables';
+@import 'bootstrap/scss/mixins';
+
+.pluginsControlWrapper {
+  --collapse-buffer-x: 2rem;
+  max-width: calc(400px + var(--collapse-buffer-x) * 2);
+  margin-bottom: 1rem;
+
+  .label {
+    margin-bottom: 0;
+
+    .previewValue {
+      font-weight: bold;
+      position: relative;
+      width: 0;
+      display: inline-flex;
+      white-space: nowrap;
+    }
+
+    &::before {
+      content: '';
+      border-top: 0.3em solid;
+      border-right: 0.3em solid transparent;
+      border-bottom: 0;
+      border-left: 0.3rem solid transparent;
+      margin-right: 0.3em;
+      display: inline-block;
+      vertical-align: 0.2em;
+      transform: rotate(-90deg);
+      transition: transform 0.35s ease;
+    }
+  }
+
+  &.expanded .label {
+    .previewValue {
+      display: none;
+    }
+
+    &::before {
+      transform: rotate(0deg);
+    }
+  }
+
+  .label + * {
+    padding-left: var(--collapse-buffer-x);
+    padding-right: var(--collapse-buffer-x);
+    margin-left: calc(0px - var(--collapse-buffer-x));
+    margin-right: calc(0px - var(--collapse-buffer-x));
+  }
+}
+
+.pluginsInfoIcon {
+  cursor: pointer;
+  scale: 0.9;
+  display: inline-block;
+  margin-left: 0.25rem;
+
+  &.showOnExpanded {
+    display: none;
+    .expanded & {
+      display: unset;
+    }
+  }
+}
+
+.reloadPlugins {
+  fill: var(--bs-primary);
+  color: var(--bs-primary);
+  cursor: pointer;
+  padding-left: 0.5rem;
+  width: 0;
+  display: inline-block;
+  white-space: nowrap;
+
+  & > * + * {
+    margin-left: 0.25rem;
+  }
+
+  &:hover,
+  &:active {
+    fill: var(--bs-primary-darkened);
+    color: var(--bs-primary-darkened);
+  }
+}
+
+.pluginsErrorIcon {
+  fill: var(--bs-primary);
+  position: relative;
+  top: -2px;
+}
+
+.pluginsControl {
+  padding-top: 0.5rem;
+}
+
+.pluginList {
+  margin-bottom: 0.75rem;
+}
+
+.pluginItem {
+  &:not(:last-child) {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  &:not(:first-child) {
+    margin-top: -1px;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  .header {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+
+    // putting the border on the collapse content instead of the
+    // header makes the border collapse more cleanly
+    border-bottom: 0;
+    & + * {
+      border-top: var(--bs-card-border-width) solid var(--bs-card-border-color);
+    }
+
+    @media screen and (min-width: 400px) {
+      flex-wrap: unset;
+    }
+  }
+
+  .pluginName {
+    white-space: nowrap;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &.expandable {
+      cursor: pointer;
+    }
+
+    .pluginHasError {
+      color: var(--bs-primary);
+    }
+  }
+  .actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .actionIcon {
+    fill: var(--bs-secondary);
+    cursor: pointer;
+
+    &:hover {
+      fill: unset;
+    }
+
+    &.disabled {
+      fill: rgba(var(--bs-secondary-rgb), 0.5);
+      cursor: not-allowed;
+    }
+  }
+
+  .toggle.on,
+  .toggle.on:hover {
+    fill: var(--bs-primary);
+  }
+
+  .errorIcon {
+    fill: var(--bs-primary);
+    position: absolute;
+    top: 50%;
+    left: 100%;
+    transform: translateY(-50%);
+    margin-left: 0.5rem;
+    cursor: pointer;
+  }
+}
+
+.paramsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.paramControl {
+  label {
+    margin: 0;
+  }
+}
+
+.paramControlInputGroup {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  & > * {
+    width: 100%;
+  }
+
+  input[type='number'] {
+    width: 4.5rem;
+    flex-shrink: 0;
+    -moz-appearance: textfield;
+    appearance: textfield;
+
+    &::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+  }
+}
+
+.pluginOptions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  .justAdded:not(:hover) {
+    background-color: var(--bs-success-bg-subtle);
+  }
+}
+
+.addAPlugin {
+  svg {
+    fill: var(--bs-secondary);
+    transition: fill 0.35s ease;
+
+    button:hover &,
+    button:active &,
+    button[aria-expanded='true'] & {
+      fill: #fff;
+    }
+  }
+
+  svg + * {
+    margin-left: 0.25rem;
+  }
+}
+
+.managePlugins {
+  svg {
+    fill: var(--bs-secondary);
+    transition: fill 0.35s ease;
+  }
+  &:hover,
+  &:active {
+    svg {
+      fill: #fff;
+    }
+  }
+
+  svg + * {
+    margin-left: 0.25rem;
+  }
+}
