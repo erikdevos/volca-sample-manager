@@ -5,25 +5,23 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Container, Nav } from 'react-bootstrap';
+import { Modal, Offcanvas } from 'react-bootstrap';
 
-import Header from './Header.js';
 import SampleDetail from './SampleDetail.js';
 import SampleDetailReadonly from './SampleDetailReadonly.js';
-import SampleRecord from './SampleRecord.js';
-import SampleMenu from './SampleMenu.js';
 import Footer from './Footer.js';
 import PluginManager from './PluginManager.js';
+import TopBar from './manager/TopBar.js';
+import SlotGrid from './manager/SlotGrid.js';
+import LibraryPanel from './manager/LibraryPanel.js';
+import { useVolcaSets, VolcaSetContext } from './useVolcaSets.js';
+import { VOLCA_SLOT_COUNT } from './setStore.js';
 import {
   getFactorySamples,
   SampleContainer,
   sampleContainerDateCompare,
-  storeAudioSourceFile,
 } from './store.js';
 import { SampleCache } from './sampleCacheStore.js';
-import { getSamplePeaksForAudioBuffer } from './utils/waveform.js';
-import { getAudioBufferForAudioFileData } from './utils/audioData.js';
-import { newSampleName } from './utils/words.js';
 import { onTabUpdateEvent, sendTabUpdateEvent } from './utils/tabSync.js';
 import { getPluginStatus, listPluginParams } from './pluginStore.js';
 
@@ -72,16 +70,10 @@ function App() {
       })
       .catch(console.error);
   }, []);
-  const restoredFocusedSampleId =
-    typeof sessionStorage === 'undefined'
-      ? null
-      : sessionStorage.getItem(sessionStorageKey);
+  // the focused sample is the one open in the edit drawer, which we don't
+  // reopen after a reload (but we still use it to load its data first)
   const [focusedSampleId, setFocusedSampleId] = useState(
-    /** @type {string | null} */ (
-      restoredFocusedSampleId && typeof restoredFocusedSampleId === 'string'
-        ? restoredFocusedSampleId
-        : null
-    )
+    /** @type {string | null} */ (null)
   );
   const focusedSampleIdRef = useRef(focusedSampleId);
   focusedSampleIdRef.current = focusedSampleId;
@@ -185,77 +177,6 @@ function App() {
       .finally(() => {
         setLoadingSamples(false);
       });
-  }, []);
-
-  /**
-   * @type {(audioFileBuffer: Uint8Array, userFile?: File) => Promise<'saved' | 'silent'>}
-   * */
-  const handleRecordFinish = useCallback(async (audioFileBuffer, userFile) => {
-    const audioBuffer = await getAudioBufferForAudioFileData(audioFileBuffer);
-    /**
-     * @type {[number, number]}
-     */
-    const trimFrames = [0, 0];
-    const waveformPeaks = await getSamplePeaksForAudioBuffer(
-      audioBuffer,
-      trimFrames
-    );
-    if (
-      [...waveformPeaks.positive, ...waveformPeaks.negative].every(
-        (peak) => peak === 0
-      )
-    ) {
-      return 'silent';
-    }
-    const sourceFileId = await storeAudioSourceFile(audioFileBuffer);
-    /**
-     * @type {string}
-     */
-    let name = '';
-    let userFileExtension = '';
-    if (userFile) {
-      const lastDotIndex = userFile.name.lastIndexOf('.');
-      if (lastDotIndex > 0) {
-        name = userFile.name.slice(0, lastDotIndex);
-        userFileExtension = userFile.name.slice(lastDotIndex);
-      } else {
-        name = userFile.name;
-      }
-    } else {
-      name = newSampleName();
-    }
-    const sample = new SampleContainer.Mutable({
-      name,
-      sourceFileId,
-      trim: { frames: trimFrames },
-      userFileInfo: userFile && {
-        type: userFile.type,
-        ext: userFileExtension,
-      },
-    });
-    await sample.persist();
-    setUserSamples((samples) => new Map([[sample.id, sample], ...samples]));
-    setFocusedSampleId(sample.id);
-    Promise.resolve().then(() =>
-      sendTabUpdateEvent('sample', [sample.id], 'create')
-    );
-    const sampleCache = new SampleCache.Mutable({
-      sampleContainer: sample,
-      cachedInfo: {
-        waveformPeaks,
-        postPluginFrameCount: audioBuffer.length,
-        duration: audioBuffer.duration,
-        failedPluginIndex: -1,
-      },
-    });
-    await sampleCache.persist();
-    setUserSampleCaches((caches) =>
-      new Map(caches).set(sample.id, sampleCache)
-    );
-    Promise.resolve().then(() =>
-      sendTabUpdateEvent('cache', [sample.id], 'create')
-    );
-    return 'saved';
   }, []);
 
   const userSampleCachesRef = useRef(userSampleCaches);
@@ -378,7 +299,7 @@ function App() {
         bulkAddSampleCaches.map((s) => s.sampleContainer.id),
         'create'
       );
-      setSelectedMobilePage('sampleList');
+      setSelectedMobilePage('library');
     },
     []
   );
@@ -599,25 +520,56 @@ function App() {
     });
   }, []);
 
+  // on small screens only one of the two panes is shown at a time
   const [selectedMobilePage, setSelectedMobilePage] = useState(
-    /** @type {'sampleList' | 'currentSample' | 'about'} */ ('currentSample')
+    /** @type {'set' | 'library'} */ ('set')
   );
 
+  const volcaSets = useVolcaSets(
+    allSamples,
+    !loadingSamples && factorySamples.size > 0
+  );
+  const allSampleCaches = useMemo(
+    () => new Map([...userSampleCaches, ...factorySampleCaches]),
+    [userSampleCaches, factorySampleCaches]
+  );
+  const setSeconds = useMemo(
+    () =>
+      volcaSets.activeSetSamples.reduce((total, sample) => {
+        const sampleCache = allSampleCaches.get(sample.id);
+        return total + (sampleCache ? sampleCache.cachedInfo.duration : 0);
+      }, 0),
+    [volcaSets.activeSetSamples, allSampleCaches]
+  );
+  const { activeSetSampleIds, toggleInSet } = volcaSets;
+  const volcaSetContextValue = useMemo(
+    () => ({
+      activeSetSampleIds,
+      isSetFull: activeSetSampleIds.size >= VOLCA_SLOT_COUNT,
+      toggleInSet,
+    }),
+    [activeSetSampleIds, toggleInSet]
+  );
   const handleSampleSelect = useCallback(
     /**
      * @param {string | null} sampleId
      */
     (sampleId) => {
       setFocusedSampleId(sampleId);
-      setSelectedMobilePage('currentSample');
     },
     []
   );
 
-  const handleHeaderClick = useCallback(() => {
-    setFocusedSampleId(null);
-    setSelectedMobilePage('currentSample');
-  }, []);
+  const closeEditDrawer = useCallback(() => setFocusedSampleId(null), []);
+
+  const handleSampleDeleteFromDrawer = useCallback(
+    /** @param {string | string[]} id */
+    (id) => {
+      handleSampleDelete(id);
+      setFocusedSampleId(null);
+    },
+    [handleSampleDelete]
+  );
 
   const sample = focusedSampleId ? allSamples.get(focusedSampleId) : null;
   const sampleCache =
@@ -681,117 +633,133 @@ function App() {
     };
   }, [pluginNameList]);
 
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+
   return (
-    <div className={classes.app}>
-      <Header onHeaderClick={handleHeaderClick} />
-      <div
-        className={`${classes.mobileLayoutContainer} ${classes[selectedMobilePage]}`}
-      >
-        <div className={`${classes.sampleListSidebar} SCRIPT_ONLY`}>
-          <SampleMenu
-            loading={loadingSamples}
-            focusedSampleId={focusedSampleId}
-            userSamples={userSamples}
-            factorySamples={factorySamples}
-            userSampleCaches={userSampleCaches}
-            factorySampleCaches={factorySampleCaches}
-            onSampleSelect={handleSampleSelect}
-            onSampleDelete={handleSampleDelete}
-          />
-        </div>
-        <div className={`${classes.mainLayout} NOSCRIPT`}>
-          <h2>
-            Send a new sound to your volca sample!
-            <span style={{ fontSize: '0.7em' }}>
-              <br />
-              <span>(or volca sample 2!)</span>
-            </span>
-          </h2>
-          <p>
-            This free web app lets you record (or select), edit, and send custom
-            samples to your KORG Volca Sample. No installation needed — send the
-            samples straight from your browser to the volca sample, using a
-            3.5mm audio cable.
-          </p>
-          <p>Enable JavaScript and refresh the page to get started.</p>
-          <div
-            className={`${classes.normalFooterContainer} ${classes.force}`}
+    <VolcaSetContext.Provider value={volcaSetContextValue}>
+      <div className={classes.app}>
+        <TopBar
+          volcaSets={volcaSets}
+          sampleCaches={allSampleCaches}
+          seconds={setSeconds}
+          onAboutClick={() => setIsAboutOpen(true)}
+        />
+        <nav className={classes.mobileTabs}>
+          <button
+            type="button"
+            className={selectedMobilePage === 'set' ? classes.active : ''}
+            onClick={() => setSelectedMobilePage('set')}
           >
-            <Footer />
+            Set ({volcaSets.activeSetSamples.length})
+          </button>
+          <button
+            type="button"
+            className={selectedMobilePage === 'library' ? classes.active : ''}
+            onClick={() => setSelectedMobilePage('library')}
+          >
+            Collection ({userSamples.size})
+          </button>
+        </nav>
+        <div
+          className={`${classes.workspace} ${
+            classes[`show-${selectedMobilePage}`]
+          }`}
+        >
+          <main className={classes.setPane}>
+            <SlotGrid
+              volcaSets={volcaSets}
+              sampleCaches={allSampleCaches}
+              onEdit={handleSampleSelect}
+            />
+          </main>
+          <div className={classes.libraryPane}>
+            <LibraryPanel
+              loading={loadingSamples}
+              userSamples={userSamples}
+              factorySamples={factorySamples}
+              sampleCaches={allSampleCaches}
+              onEdit={handleSampleSelect}
+              onBulkImport={handleSampleBulkAdd}
+              onSampleUpdate={handleSampleUpdate}
+              onSampleDelete={handleSampleDelete}
+              onAddToSet={volcaSets.addToSet}
+            />
           </div>
         </div>
-        <div className={`${classes.mainLayout} SCRIPT_ONLY`}>
-          {!sample ? null : sample instanceof SampleContainer.Mutable ? (
-            <SampleDetail
-              sample={sample}
-              sampleCache={sampleCache}
-              pluginParamsDefs={pluginParamsDefs}
-              pluginStatusMap={pluginStatusMap}
-              isPluginManagerOpen={isPluginManagerOpen}
-              editCacheInvalidator={editCacheInvalidator}
-              onSampleUpdate={handleSampleUpdate}
-              onSampleDuplicate={handleSampleDuplicate}
-              onSampleDelete={handleSampleDelete}
-              onOpenPluginManager={openPluginManager}
-              onRecheckPlugins={updatePluginParamsDefs}
-              onRegenerateSampleCache={handleRegenerateSampleCache}
-            />
-          ) : (
-            <SampleDetailReadonly
-              sample={sample}
-              sampleCache={sampleCache}
-              onSampleDuplicate={handleSampleDuplicate}
-            />
-          )}
-          {!focusedSampleId && (
-            <SampleRecord
-              userSamples={userSamples}
-              onUpdatePluginList={updatePluginParamsDefs}
-              onRegenerateSampleCache={handleRegenerateSampleCache}
-              onBulkImport={handleSampleBulkAdd}
-              onRecordFinish={handleRecordFinish}
-            />
-          )}
-          {(!focusedSampleId || sample) && (
-            <div className={classes.normalFooterContainer}>
-              <Footer />
-            </div>
-          )}
-        </div>
-        <div className={classes.mobileFooterContainer}>
-          <Container fluid="sm">
-            <h2>About Volca Sampler</h2>
+
+        <Offcanvas
+          show={Boolean(sample)}
+          onHide={closeEditDrawer}
+          placement="end"
+          className={classes.editDrawer}
+        >
+          <Offcanvas.Header closeButton>
+            <Offcanvas.Title>Edit sample</Offcanvas.Title>
+          </Offcanvas.Header>
+          <Offcanvas.Body>
+            {!sample ? null : sample instanceof SampleContainer.Mutable ? (
+              <SampleDetail
+                sample={sample}
+                sampleCache={sampleCache}
+                pluginParamsDefs={pluginParamsDefs}
+                pluginStatusMap={pluginStatusMap}
+                isPluginManagerOpen={isPluginManagerOpen}
+                editCacheInvalidator={editCacheInvalidator}
+                onSampleUpdate={handleSampleUpdate}
+                onSampleDuplicate={handleSampleDuplicate}
+                onSampleDelete={handleSampleDeleteFromDrawer}
+                onOpenPluginManager={openPluginManager}
+                onRecheckPlugins={updatePluginParamsDefs}
+                onRegenerateSampleCache={handleRegenerateSampleCache}
+              />
+            ) : (
+              <SampleDetailReadonly
+                sample={sample}
+                sampleCache={sampleCache}
+                onSampleDuplicate={handleSampleDuplicate}
+              />
+            )}
+          </Offcanvas.Body>
+        </Offcanvas>
+
+        <Modal
+          show={isAboutOpen}
+          onHide={() => setIsAboutOpen(false)}
+          size="lg"
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>About Volca Sample Manager</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p>
+              Manage your sample collection and the 100 slots of your KORG volca
+              sample. Based on{' '}
+              <a
+                href="https://github.com/benwiley4000/volca-sampler"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Volca Sampler
+              </a>{' '}
+              by Ben Wiley (MIT license), using KORG's Syro library.
+            </p>
             <Footer />
-          </Container>
-        </div>
+          </Modal.Body>
+        </Modal>
+
+        <PluginManager
+          isOpen={isPluginManagerOpen}
+          pluginList={pluginNameList}
+          pluginStatusMap={pluginStatusMap}
+          userSamples={userSamples}
+          onUpdatePluginList={updatePluginParamsDefs}
+          onSampleUpdate={handleSampleUpdate}
+          onSampleBulkReplace={handleSampleBulkReplace}
+          onRegenerateSampleCache={handleRegenerateSampleCache}
+          onClose={closePluginManager}
+        />
       </div>
-      <Nav
-        className={`${classes.mobilePageNav} SCRIPT_ONLY`}
-        activeKey={selectedMobilePage}
-        variant="underline"
-      >
-        <Nav.Item onClick={() => setSelectedMobilePage('sampleList')}>
-          <Nav.Link eventKey="sampleList">List</Nav.Link>
-        </Nav.Item>
-        <Nav.Item onClick={() => setSelectedMobilePage('currentSample')}>
-          <Nav.Link eventKey="currentSample">Sample</Nav.Link>
-        </Nav.Item>
-        <Nav.Item onClick={() => setSelectedMobilePage('about')}>
-          <Nav.Link eventKey="about">About</Nav.Link>
-        </Nav.Item>
-      </Nav>
-      <PluginManager
-        isOpen={isPluginManagerOpen}
-        pluginList={pluginNameList}
-        pluginStatusMap={pluginStatusMap}
-        userSamples={userSamples}
-        onUpdatePluginList={updatePluginParamsDefs}
-        onSampleUpdate={handleSampleUpdate}
-        onSampleBulkReplace={handleSampleBulkReplace}
-        onRegenerateSampleCache={handleRegenerateSampleCache}
-        onClose={closePluginManager}
-      />
-    </div>
+    </VolcaSetContext.Provider>
   );
 }
 

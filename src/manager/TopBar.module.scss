@@ -1,0 +1,157 @@
+.topBar {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  padding: 0.85rem 1.5rem;
+  background: var(--vsm-header-bg);
+  color: var(--vsm-header-text);
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+// three little "knobs", a nod to the volca's front panel
+.logo {
+  display: grid;
+  grid-template-columns: repeat(3, 0.55rem);
+  gap: 0.2rem;
+
+  i {
+    width: 0.55rem;
+    height: 1.6rem;
+    border-radius: 0.3rem;
+    background: var(--vsm-accent);
+
+    &:nth-child(2) {
+      height: 1.1rem;
+      align-self: end;
+      background: var(--vsm-header-text);
+    }
+
+    &:nth-child(3) {
+      height: 1.35rem;
+      align-self: center;
+      background: var(--vsm-header-muted);
+    }
+  }
+}
+
+.brandText {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+
+  strong {
+    font-family: var(--vsm-display);
+    font-size: 1.05rem;
+    letter-spacing: -0.01em;
+  }
+
+  span {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--vsm-header-muted);
+  }
+}
+
+.setPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 13rem;
+}
+
+.pickerLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--vsm-header-muted);
+}
+
+.pickerRow {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.setSelect {
+  font-weight: 600;
+  background-color: var(--vsm-header-track);
+  color: var(--vsm-header-text);
+  border-color: transparent;
+  // light chevron on the dark background
+  --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23d0d3d8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+
+  option {
+    color: initial;
+  }
+}
+
+.setMenuToggle {
+  background: var(--vsm-header-track);
+  border-color: transparent;
+  letter-spacing: 0.1em;
+
+  &::after {
+    display: none;
+  }
+}
+
+.actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.clearButton {
+  border-color: var(--vsm-header-track);
+}
+
+.transferButton {
+  font-weight: 600;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  background: var(--vsm-accent);
+  border-color: var(--vsm-accent);
+
+  &:hover,
+  &:focus {
+    background: var(--vsm-accent-dark);
+    border-color: var(--vsm-accent-dark);
+  }
+
+  &:disabled {
+    background: var(--vsm-header-track);
+    border-color: var(--vsm-header-track);
+    color: var(--vsm-header-muted);
+  }
+}
+
+@media (max-width: 991px) {
+  .topBar {
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .actions {
+    margin-left: 0;
+    width: 100%;
+
+    & > * {
+      flex: 1;
+    }
+  }
+}
+
+@media (max-width: 575px) {
+  .setPicker {
+    flex: 1;
+    min-width: 0;
+  }
+}

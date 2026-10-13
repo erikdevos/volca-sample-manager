@@ -47,6 +47,9 @@ import { getSamplePeaksForAudioBuffer } from './utils/waveform.js';
  * @property {NormalizeSetting} [normalize]
  * @property {number} [pitchAdjustment]
  * @property {PluginClientSpec[]} [plugins]
+ * @property {string | null} [category]
+ * @property {boolean} [favorite]
+ * @property {string | null} [sourceHash]
  */
 
 /**
@@ -64,6 +67,9 @@ import { getSamplePeaksForAudioBuffer } from './utils/waveform.js';
  * @property {string} metadataVersion
  * @property {number} pitchAdjustment
  * @property {PluginClientSpec[]} plugins
+ * @property {string | null} category
+ * @property {boolean} favorite
+ * @property {string | null} sourceHash
  */
 
 /**
@@ -76,6 +82,8 @@ import { getSamplePeaksForAudioBuffer } from './utils/waveform.js';
  * @property {NormalizeSetting} [normalize]
  * @property {number} [pitchAdjustment]
  * @property {PluginClientSpec[]} [plugins]
+ * @property {string | null} [category]
+ * @property {boolean} [favorite]
  */
 
 /**
@@ -507,6 +515,9 @@ export class SampleContainer {
     normalize = 'selection',
     pitchAdjustment = 1,
     plugins = [],
+    category = null,
+    favorite = false,
+    sourceHash = null,
   }) {
     /** @readonly */
     this.id = id;
@@ -527,6 +538,9 @@ export class SampleContainer {
       normalize,
       pitchAdjustment,
       plugins,
+      category,
+      favorite,
+      sourceHash,
       metadataVersion: METADATA_VERSION,
     };
   }

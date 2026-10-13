@@ -37,7 +37,11 @@ void iterateSyroBufferWork(char *data, int size) {
 EMSCRIPTEN_KEEPALIVE
 void startSyroBufferWork(char *data, int size) {
   uint32_t NumOfData = *(uint32_t *)data;
-  SyroData *syro_data = (SyroData *)(data + sizeof(uint32_t));
+  // The input buffer is reused (and resized) by Emscripten for the next
+  // message to the worker, while Syro keeps reading the sample data during
+  // the following iterations. So we copy everything into memory we own.
+  SyroData *syro_data = malloc(sizeof(SyroData) * NumOfData);
+  memcpy(syro_data, data + sizeof(uint32_t), sizeof(SyroData) * NumOfData);
   // The passed pData pointer points to memory in the main thread, not the
   // worker thread. We pass the actual data as part of the input buffer so
   // we can replace the pData pointer with one that references memory in the
@@ -47,7 +51,9 @@ void startSyroBufferWork(char *data, int size) {
   uint32_t pDataOffset = 0;
   for (uint32_t i = 0; i < NumOfData; i++) {
     SyroData *current_syro_data = syro_data + i;
-    current_syro_data->pData = (uint8_t *)(pDataBuffer + pDataOffset);
+    current_syro_data->pData = malloc(current_syro_data->Size);
+    memcpy(current_syro_data->pData, pDataBuffer + pDataOffset,
+           current_syro_data->Size);
     pDataOffset += current_syro_data->Size;
   }
 

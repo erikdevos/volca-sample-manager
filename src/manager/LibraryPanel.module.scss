@@ -1,0 +1,255 @@
+.library {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  height: 100%;
+  padding: 1.25rem 1.25rem 0;
+  background: var(--vsm-panel);
+  border-left: 1px solid var(--vsm-border);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.title {
+  font-family: var(--vsm-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.count {
+  font-family: var(--vsm-mono);
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--vsm-muted);
+}
+
+.sourceToggle {
+  display: flex;
+  background: var(--vsm-border);
+  border-radius: 0.45rem;
+  padding: 2px;
+
+  button {
+    border: 0;
+    background: transparent;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.35rem;
+    color: var(--vsm-muted);
+
+    &.active {
+      background: var(--vsm-surface);
+      color: var(--vsm-text);
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+  }
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.autoAudition {
+  font-size: 0.78rem;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.bulkBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.5rem;
+  background: var(--vsm-accent-soft);
+  font-size: 0.82rem;
+
+  select {
+    width: auto;
+    flex: 1;
+    min-width: 9rem;
+  }
+}
+
+.list {
+  list-style: none;
+  margin: 0 -1.25rem;
+  padding: 0 0 1rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  border-top: 1px solid var(--vsm-border);
+}
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.38rem 1.25rem;
+  border-bottom: 1px solid var(--vsm-border-soft);
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+
+  &:hover {
+    background: var(--vsm-hover);
+
+    .editButton {
+      opacity: 1;
+    }
+  }
+
+  &:focus-visible,
+  &[aria-selected='true']:focus {
+    background: var(--vsm-hover);
+    box-shadow: inset 3px 0 0 var(--vsm-accent);
+  }
+
+  &.checked {
+    background: var(--vsm-accent-soft);
+  }
+
+  &.playing .playIcon {
+    background: var(--category-color);
+  }
+}
+
+.checkbox {
+  flex-shrink: 0;
+  accent-color: var(--vsm-accent);
+}
+
+.playIcon {
+  flex-shrink: 0;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--vsm-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: #fff;
+  }
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.rowName {
+  font-size: 0.86rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--vsm-text);
+}
+
+.favorite {
+  color: var(--vsm-warning);
+  margin-left: 0.3rem;
+}
+
+.rowMeta {
+  font-size: 0.7rem;
+  color: var(--vsm-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.categoryDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--category-color);
+}
+
+.rowDuration {
+  font-family: var(--vsm-mono);
+  margin-left: 0.25rem;
+}
+
+.editButton {
+  border: 0;
+  background: transparent;
+  color: var(--vsm-muted);
+  opacity: 0;
+  font-size: 0.95rem;
+  padding: 0 0.2rem;
+
+  &:hover {
+    color: var(--vsm-accent);
+  }
+}
+
+.setToggle {
+  flex-shrink: 0;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.45rem;
+  border: 1.5px solid var(--vsm-border);
+  background: var(--vsm-surface);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--vsm-text);
+
+  &:hover:not(:disabled) {
+    border-color: var(--vsm-accent);
+    color: var(--vsm-accent);
+  }
+
+  &.inSet {
+    background: var(--vsm-ok);
+    border-color: var(--vsm-ok);
+    color: #fff;
+  }
+
+  &:disabled {
+    opacity: 0.35;
+  }
+}
+
+.rowProgress {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 2px;
+  width: var(--playback-progress);
+  background: var(--category-color);
+  opacity: 0;
+
+  .playing & {
+    opacity: 1;
+  }
+}
+
+.emptyList {
+  padding: 1.5rem 1.25rem;
+  color: var(--vsm-muted);
+  font-size: 0.9rem;
+}

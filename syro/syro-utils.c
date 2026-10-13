@@ -7,6 +7,8 @@ typedef struct SampleBufferContainer {
   uint32_t dataStartPoints[110];
   // internal
   SyroData *syro_data;
+  uint32_t num_of_data;
+  bool ended;
   SyroHandle syro_handle;
 } SampleBufferContainer;
 
@@ -23,6 +25,8 @@ SampleBufferContainer *startSampleBuffer(SyroData *syro_data,
   uint32_t frame;
   SampleBufferContainer *sampleBuffer = malloc(sizeof(SampleBufferContainer));
   sampleBuffer->syro_data = syro_data;
+  sampleBuffer->num_of_data = NumOfData;
+  sampleBuffer->ended = false;
   sampleBuffer->dataStartPoints[0] = 0;
 
   //----- Start ------
@@ -58,7 +62,6 @@ SampleBufferContainer *startSampleBuffer(SyroData *syro_data,
 
 void iterateSampleBuffer(SampleBufferContainer *sampleBuffer,
                          int32_t iterations) {
-  const int num_of_data = 1;
   int16_t left, right;
   int32_t frame = iterations;
   uint32_t CurData = SyroVolcaSample_GetCurData(sampleBuffer->syro_handle);
@@ -75,9 +78,12 @@ void iterateSampleBuffer(SampleBufferContainer *sampleBuffer,
     sampleBuffer->buffer[sampleBuffer->progress++] = (uint8_t)(right >> 8);
     frame--;
   }
-  if (sampleBuffer->progress == sampleBuffer->size) {
+  // The worker can receive another iteration request after the buffer is
+  // complete, so make sure we only end (and free) once.
+  if (sampleBuffer->progress == sampleBuffer->size && !sampleBuffer->ended) {
+    sampleBuffer->ended = true;
     SyroVolcaSample_End(sampleBuffer->syro_handle);
-    free_syrodata(sampleBuffer->syro_data, num_of_data);
+    free_syrodata(sampleBuffer->syro_data, sampleBuffer->num_of_data);
   }
 }
 

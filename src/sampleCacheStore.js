@@ -21,6 +21,23 @@ import { SampleContainer } from './store';
  * }} CachedInfo
  */
 
+/**
+ * @param {import('./store').SampleMetadata} a
+ * @param {import('./store').SampleMetadata} b
+ */
+function hasAudioRelevantChanges(a, b) {
+  return (
+    a.sourceFileId !== b.sourceFileId ||
+    a.trim.frames[0] !== b.trim.frames[0] ||
+    a.trim.frames[1] !== b.trim.frames[1] ||
+    a.useCompression !== b.useCompression ||
+    a.qualityBitDepth !== b.qualityBitDepth ||
+    a.normalize !== b.normalize ||
+    a.pitchAdjustment !== b.pitchAdjustment ||
+    JSON.stringify(a.plugins) !== JSON.stringify(b.plugins)
+  );
+}
+
 const sampleCachedInfoStore = localforage.createInstance({
   name: 'sample_cached_info',
   driver: localforage.INDEXEDDB,
@@ -92,6 +109,18 @@ export class SampleCache {
     async update(sampleContainer) {
       if (sampleContainer === this.sampleContainer) {
         return this;
+      }
+      if (
+        !hasAudioRelevantChanges(
+          this.sampleContainer.metadata,
+          sampleContainer.metadata
+        )
+      ) {
+        // e.g. a new name or category: the audio stays the same
+        return new SampleCache.Mutable({
+          sampleContainer,
+          cachedInfo: this.cachedInfo,
+        });
       }
       /** @type {CachedInfo} */
       let cachedInfo;

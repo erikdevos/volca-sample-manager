@@ -23,6 +23,7 @@ import { SampleContainer } from './store.js';
 import PluginsControl from './PluginsControl.js';
 import QualityBitDepthControl from './QualityBitDepthControl.js';
 import PitchControl from './PitchControl.js';
+import SampleCategoryControl from './SampleCategoryControl.js';
 import { downloadBlob } from './utils/download.js';
 import { formatDate } from './utils/datetime.js';
 
@@ -98,6 +99,10 @@ const SampleDetail = React.memo(
             onSampleDelete={onSampleDelete}
           />
         </h2>
+        <SampleCategoryControl
+          sample={sample}
+          onSampleUpdate={onSampleUpdate}
+        />
         <p>
           <strong>Sampled:</strong>{' '}
           {formatDate(new Date(sample.metadata.dateSampled))}
@@ -180,7 +185,7 @@ const SampleDetailActions = React.memo(
       }
     }, [renaming, name]);
     const newNameTrimmed = editedName.trim();
-    /** @type {React.FormEventHandler} */
+    /** @type {React.FormEventHandler} */
     const handleRename = useCallback(
       (e) => {
         e.preventDefault();

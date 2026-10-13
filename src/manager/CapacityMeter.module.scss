@@ -1,0 +1,92 @@
+.capacity {
+  display: flex;
+  gap: 1.5rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.meter {
+  flex: 1;
+  min-width: 9rem;
+  --level-color: var(--vsm-ok);
+
+  &.warning {
+    --level-color: var(--vsm-warning);
+  }
+
+  &.over {
+    --level-color: var(--vsm-danger);
+  }
+}
+
+.meterTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--vsm-header-muted);
+}
+
+.value {
+  font-family: var(--vsm-mono);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--vsm-header-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.max {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--vsm-header-muted);
+}
+
+.track {
+  height: 0.55rem;
+  border-radius: 1rem;
+  background: var(--vsm-header-track);
+  overflow: hidden;
+  margin: 0.25rem 0 0.2rem;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 1rem;
+  background: var(--level-color);
+  transition: width 0.25s ease, background-color 0.25s ease;
+}
+
+.remark {
+  font-size: 0.72rem;
+  color: var(--vsm-header-muted);
+
+  .over & {
+    color: var(--level-color);
+    font-weight: 600;
+  }
+}
+
+@media (max-width: 991px) {
+  .capacity {
+    flex-basis: 100%;
+    gap: 1rem;
+  }
+
+  .meter {
+    min-width: 0;
+  }
+
+  .value {
+    font-size: 1rem;
+  }
+
+  .max {
+    font-size: 0.7rem;
+  }
+}

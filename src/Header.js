@@ -15,7 +15,6 @@ const Header = React.memo(
           <h1 className={classes.title} onClick={onHeaderClick}>
             <span className={classes.titleText} data-text="Volca Sample">
               Volca Sample
-              <span className={classes.titleR}>r</span>
               <svg
                 viewBox="0 0 150 150"
                 preserveAspectRatio="none"
@@ -37,13 +36,10 @@ const Header = React.memo(
               </svg>
             </span>
             <div className={classes.titleGraphic}>
-              <img
-                src="volca_sample.png"
-                alt=""
-              />
+              <img src="volca_sample.png" alt="" />
             </div>
             <div className={classes.tagline}>
-              <h2>for volca sample</h2>
+              <h2>sample manager</h2>
             </div>
           </h1>
         </Container>

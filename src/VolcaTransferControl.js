@@ -26,6 +26,7 @@ import VolcaEraseSlotsModals from './VolcaEraseSlotsModals.js';
  *   justTheButton?: boolean;
  *   showInfoBeforeTransfer?: boolean;
  *   button?: React.ReactElement;
+ *   initiallyOpen?: boolean;
  *   onSlotNumberUpdate?: (update: number | ((slotNumber: number) => number)) => void;
  * }} props
  */
@@ -35,6 +36,7 @@ function VolcaTransferControl({
   justTheButton,
   showInfoBeforeTransfer,
   button,
+  initiallyOpen = false,
   onSlotNumberUpdate,
 }) {
   const samples = useMemo(
@@ -103,8 +105,10 @@ function VolcaTransferControl({
 
   const [syroProgress, setSyroProgress] = useState(1);
   const [infoBeforeTransferModalOpen, setInfoBeforeTransferModalOpen] =
-    useState(false);
-  const [preTransferModalOpen, setPreTransferModalOpen] = useState(false);
+    useState(initiallyOpen && Boolean(showInfoBeforeTransfer));
+  const [preTransferModalOpen, setPreTransferModalOpen] = useState(
+    initiallyOpen && !showInfoBeforeTransfer
+  );
 
   const [{ syroBuffer, dataStartPoints }, setSyroBufferAndDataStartPoints] =
     useState({

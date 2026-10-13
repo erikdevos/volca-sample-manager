@@ -1,9 +1,40 @@
 :root {
   --grayscale-filter: grayscale(100%) brightness(200%);
-  --body-font-family: 'PT Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-  'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-  sans-serif;
+  --body-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Roboto', 'Helvetica Neue', sans-serif;
   --sidebar-width: 330px;
+
+  /* Volca Sample Manager design tokens */
+  --vsm-body: var(--body-font-family);
+  --vsm-display: 'Space Grotesk', var(--body-font-family);
+  --vsm-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+
+  --vsm-bg: #f4f4f1;
+  --vsm-panel: #fbfbf9;
+  --vsm-surface: #ffffff;
+  --vsm-text: #1e2126;
+  --vsm-muted: #6b7079;
+  --vsm-faint: #b4b7bc;
+  --vsm-border: #e1e1dc;
+  --vsm-border-soft: #ececE8;
+  --vsm-hover: #f0f0ec;
+
+  --vsm-accent: #e2382b;
+  --vsm-accent-dark: #c22b20;
+  --vsm-accent-soft: #fdecea;
+
+  --vsm-ok: #2f9e6e;
+  --vsm-warning: #f0a020;
+  --vsm-warning-text: #b86e00;
+  --vsm-danger: #e2382b;
+  --vsm-danger-soft: #fdecea;
+
+  --vsm-header-bg: #1e2126;
+  --vsm-header-text: #f4f4f1;
+  --vsm-header-muted: #9aa0a8;
+  --vsm-header-track: #353a42;
+
+  --vsm-library-width: 440px;
 }
 
 html,
@@ -20,7 +51,7 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: Kalam, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
   'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
   sans-serif;
 }
