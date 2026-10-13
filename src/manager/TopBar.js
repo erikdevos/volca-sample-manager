@@ -92,6 +92,7 @@ const TopBar = React.memo(
    *   factorySamples: SampleContainer[];
    *   deviceState: DeviceStateApi;
    *   onAboutClick: () => void;
+   *   onBackupClick: () => void;
    * }} props
    */
   function TopBar({
@@ -101,6 +102,7 @@ const TopBar = React.memo(
     factorySamples,
     deviceState,
     onAboutClick,
+    onBackupClick,
   }) {
     const {
       sets,
@@ -293,6 +295,9 @@ const TopBar = React.memo(
                 onClick={() => newSet('Factory set', factorySampleIds)}
               >
                 New set from the factory samples
+              </Dropdown.Item>
+              <Dropdown.Item onClick={onBackupClick}>
+                Backup &amp; restore...
               </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown>

@@ -1,0 +1,46 @@
+.section {
+  margin-bottom: 1.5rem;
+
+  h3 {
+    font-family: var(--vsm-display);
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+  }
+
+  &:last-of-type {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.muted {
+  color: var(--vsm-muted);
+  font-size: 0.85rem;
+}
+
+.progress {
+  margin-top: 0.75rem;
+  height: 1.1rem;
+}
+
+.optionDetail {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--vsm-muted);
+  margin-bottom: 0.5rem;
+}
+
+.confirm {
+  font-weight: 600;
+}
+
+.result ul {
+  padding-left: 1.2rem;
+}

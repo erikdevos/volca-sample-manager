@@ -17,6 +17,7 @@ import LibraryPanel from './manager/LibraryPanel.js';
 import DuplicatesModal from './manager/DuplicatesModal.js';
 import TrimSilenceModal from './manager/TrimSilenceModal.js';
 import TidyNamesModal from './manager/TidyNamesModal.js';
+import BackupModal from './manager/BackupModal.js';
 import { useVolcaSets, VolcaSetContext } from './useVolcaSets.js';
 import { useDeviceState } from './useDeviceState.js';
 import { VOLCA_SLOT_COUNT } from './setStore.js';
@@ -664,6 +665,7 @@ function App() {
     [trimTarget]
   );
 
+  const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [tidyTarget, setTidyTarget] = useState(
     /** @type {{ title: string; sampleIds: string[] } | null} */ (null)
   );
@@ -689,6 +691,7 @@ function App() {
           factorySamples={factorySampleList}
           deviceState={deviceState}
           onAboutClick={() => setIsAboutOpen(true)}
+          onBackupClick={() => setIsBackupOpen(true)}
         />
         <nav className={classes.mobileTabs}>
           <button
@@ -824,6 +827,15 @@ function App() {
           samples={trimSamples}
           onHide={() => setTrimTarget(null)}
           onSampleUpdate={handleSampleUpdate}
+        />
+
+        <BackupModal
+          show={isBackupOpen}
+          onHide={() => setIsBackupOpen(false)}
+          userSamples={userSamples}
+          factorySamples={factorySamples}
+          setCount={volcaSets.sets.length}
+          activeSetId={volcaSets.activeSet ? volcaSets.activeSet.id : null}
         />
 
         <TidyNamesModal
