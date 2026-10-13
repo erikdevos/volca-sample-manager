@@ -1,7 +1,6 @@
 import React, {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -18,7 +17,6 @@ import {
 import WarningIcon from '@material-design-icons/svg/filled/warning.svg';
 
 import WaveformEdit from './WaveformEdit.js';
-import VolcaTransferControl from './VolcaTransferControl.js';
 import { SampleContainer } from './store.js';
 import PluginsControl from './PluginsControl.js';
 import QualityBitDepthControl from './QualityBitDepthControl.js';
@@ -60,25 +58,6 @@ const SampleDetail = React.memo(
     onRecheckPlugins,
     onRegenerateSampleCache,
   }) {
-    /**
-     * @type {(update: number | ((slotNumber: number) => number)) => void}
-     */
-    const handleSlotNumberUpdate = useCallback(
-      (update) => {
-        onSampleUpdate(sample.id, ({ slotNumber }) => ({
-          slotNumber:
-            typeof update === 'function' ? update(slotNumber) : update,
-        }));
-      },
-      [sample.id, onSampleUpdate]
-    );
-    const sampleCaches = useMemo(
-      () =>
-        sampleCache
-          ? new Map().set(sampleCache.sampleContainer.id, sampleCache)
-          : new Map(),
-      [sampleCache]
-    );
     return (
       <Container fluid="sm">
         <h2 className={classes.sampleName}>
@@ -138,12 +117,6 @@ const SampleDetail = React.memo(
           sampleCache={sampleCache}
           editCacheInvalidator={editCacheInvalidator}
           onSampleUpdate={onSampleUpdate}
-        />
-        <h4>Transfer</h4>
-        <VolcaTransferControl
-          samples={sample}
-          sampleCaches={sampleCaches}
-          onSlotNumberUpdate={handleSlotNumberUpdate}
         />
       </Container>
     );

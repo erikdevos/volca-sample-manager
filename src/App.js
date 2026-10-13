@@ -17,6 +17,7 @@ import LibraryPanel from './manager/LibraryPanel.js';
 import DuplicatesModal from './manager/DuplicatesModal.js';
 import TrimSilenceModal from './manager/TrimSilenceModal.js';
 import { useVolcaSets, VolcaSetContext } from './useVolcaSets.js';
+import { useDeviceState } from './useDeviceState.js';
 import { VOLCA_SLOT_COUNT } from './setStore.js';
 import {
   getFactorySamples,
@@ -531,6 +532,7 @@ function App() {
     allSamples,
     !loadingSamples && factorySamples.size > 0
   );
+  const deviceState = useDeviceState(volcaSets.activeSetSamples);
   const allSampleCaches = useMemo(
     () => new Map([...userSampleCaches, ...factorySampleCaches]),
     [userSampleCaches, factorySampleCaches]
@@ -636,11 +638,11 @@ function App() {
   }, [pluginNameList]);
 
   // in their original slot order
-  const factorySampleIds = useMemo(
+  const factorySampleList = useMemo(
     () =>
-      [...factorySamples.values()]
-        .sort((a, b) => a.metadata.slotNumber - b.metadata.slotNumber)
-        .map((s) => s.id),
+      [...factorySamples.values()].sort(
+        (a, b) => a.metadata.slotNumber - b.metadata.slotNumber
+      ),
     [factorySamples]
   );
 
@@ -668,7 +670,8 @@ function App() {
           volcaSets={volcaSets}
           sampleCaches={allSampleCaches}
           seconds={setSeconds}
-          factorySampleIds={factorySampleIds}
+          factorySamples={factorySampleList}
+          deviceState={deviceState}
           onAboutClick={() => setIsAboutOpen(true)}
         />
         <nav className={classes.mobileTabs}>
@@ -696,6 +699,8 @@ function App() {
             <SlotGrid
               volcaSets={volcaSets}
               sampleCaches={allSampleCaches}
+              device={deviceState.device}
+              deviceDiff={deviceState.diff}
               onEdit={handleSampleSelect}
               onTrimSilence={() =>
                 setTrimTarget({

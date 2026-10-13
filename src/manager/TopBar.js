@@ -1,17 +1,41 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Button, Dropdown, Form, Modal } from 'react-bootstrap';
 
 import CapacityMeter from './CapacityMeter.js';
-import VolcaTransferControl from '../VolcaTransferControl.js';
 import VolcaEraseSlotsModals from '../VolcaEraseSlotsModals.js';
 import AllDataTransferModal from './AllDataTransferModal.js';
-import { SampleContainer } from '../store.js';
+import SetTransferModal from './SetTransferModal.js';
 import { VOLCA_MEMORY_SECONDS, VOLCA_SLOT_COUNT } from '../setStore.js';
 
 import classes from './TopBar.module.scss';
 
 /** @typedef {import('../sampleCacheStore.js').SampleCache} SampleCache */
 /** @typedef {import('../useVolcaSets.js').VolcaSetsApi} VolcaSetsApi */
+/** @typedef {import('../useDeviceState.js').DeviceStateApi} DeviceStateApi */
+/** @typedef {import('../store').SampleContainer} SampleContainer */
+
+/**
+ * What the volca has compared to the set, in a few words.
+ *
+ * @param {import('../utils/deviceDiff.js').DeviceDiff} diff
+ * @param {number} setSize
+ */
+function getSyncSummary(diff, setSize) {
+  const changes = diff.toSend.length + diff.toErase.length;
+  if (diff.inSync) {
+    return { level: 'ok', text: setSize ? 'In sync with this set' : 'Empty' };
+  }
+  if (!diff.isKnown && !diff.unchanged) {
+    return { level: 'unknown', text: 'Unknown, not synced yet' };
+  }
+  const parts = [];
+  if (diff.toSend.length) parts.push(`${diff.toSend.length} to send`);
+  if (diff.toErase.length) parts.push(`${diff.toErase.length} to erase`);
+  return {
+    level: 'changes',
+    text: parts.join(' · ') || `${changes} changes`,
+  };
+}
 
 /**
  * @param {{
@@ -65,7 +89,8 @@ const TopBar = React.memo(
    *   volcaSets: VolcaSetsApi;
    *   sampleCaches: Map<string, SampleCache>;
    *   seconds: number;
-   *   factorySampleIds: string[];
+   *   factorySamples: SampleContainer[];
+   *   deviceState: DeviceStateApi;
    *   onAboutClick: () => void;
    * }} props
    */
@@ -73,7 +98,8 @@ const TopBar = React.memo(
     volcaSets,
     sampleCaches,
     seconds,
-    factorySampleIds,
+    factorySamples,
+    deviceState,
     onAboutClick,
   }) {
     const {
@@ -91,25 +117,35 @@ const TopBar = React.memo(
     const canTransfer =
       activeSetSamples.length > 0 && !isOverSlots && !isOverMemory;
 
-    // The position in the set is the slot number on the volca
-    const transferSamples = useMemo(
-      () =>
-        activeSetSamples.map(
-          (sample, slotNumber) =>
-            new SampleContainer({
-              ...sample.metadata,
-              id: sample.id,
-              slotNumber,
-            })
-        ),
-      [activeSetSamples]
+    const factorySampleIds = useMemo(
+      () => factorySamples.map((s) => s.id),
+      [factorySamples]
     );
 
-    // Preparing the transfer audio takes some work, so we only mount the
-    // transfer control once it's requested, for the set as it is then.
-    const setKey = activeSetSamples.map((s) => s.id).join(',');
-    const [transferRequestKey, setTransferRequestKey] = useState(
-      /** @type {string | null} */ (null)
+    const {
+      diff,
+      recordTransfer,
+      recordEraseAll,
+      recordFactory,
+      recordErase,
+      markUnknown,
+    } = deviceState;
+    const [confirmAlreadyOnVolca, setConfirmAlreadyOnVolca] = useState(false);
+    const sync = getSyncSummary(diff, activeSetSamples.length);
+    const changeCount = diff.toSend.length + diff.toErase.length;
+    const [isTransferOpen, setIsTransferOpen] = useState(false);
+
+    const handleAllDataComplete = useCallback(
+      /** @param {import('./AllDataTransferModal.js').AllDataAction} action */
+      (action) => {
+        if (action === 'eraseAll') recordEraseAll();
+        else recordFactory(factorySamples);
+      },
+      [recordEraseAll, recordFactory, factorySamples]
+    );
+    const handleAllDataInterrupted = useCallback(
+      () => markUnknown(),
+      [markUnknown]
     );
 
     const [isEraseInfoOpen, setIsEraseInfoOpen] = useState(false);
@@ -135,13 +171,13 @@ const TopBar = React.memo(
             ? 'This set needs more memory than the volca sample has'
             : undefined
         }
-        onClick={
-          transferRequestKey === setKey
-            ? undefined
-            : () => setTransferRequestKey(setKey)
-        }
+        onClick={() => setIsTransferOpen(true)}
       >
-        Transfer to volca
+        {!canTransfer || (!diff.isKnown && !diff.unchanged)
+          ? 'Transfer to volca'
+          : diff.inSync
+          ? 'Transfer again'
+          : `Transfer changes (${changeCount})`}
       </Button>
     );
 
@@ -204,6 +240,21 @@ const TopBar = React.memo(
 
         <CapacityMeter slotsUsed={activeSetSamples.length} seconds={seconds} />
 
+        <div
+          className={`${classes.sync} ${classes[sync.level]}`}
+          title={
+            diff.isKnown
+              ? 'What this app has sent to your volca, compared to this set'
+              : "The app doesn't know (for all slots) what's on your volca. Transfer the set once to sync."
+          }
+        >
+          <span className={classes.pickerLabel}>Volca</span>
+          <span className={classes.syncText}>
+            <i aria-hidden="true" />
+            {sync.text}
+          </span>
+        </div>
+
         <div className={classes.actions}>
           <Dropdown>
             <Dropdown.Toggle
@@ -224,6 +275,17 @@ const TopBar = React.memo(
                 Restore factory samples...
               </Dropdown.Item>
               <Dropdown.Divider />
+              <Dropdown.Header>What the app knows</Dropdown.Header>
+              <Dropdown.Item
+                disabled={!activeSetSamples.length || isOverSlots}
+                onClick={() => setConfirmAlreadyOnVolca(true)}
+              >
+                This set is already on my volca...
+              </Dropdown.Item>
+              <Dropdown.Item onClick={() => markUnknown()}>
+                Forget what's on the volca
+              </Dropdown.Item>
+              <Dropdown.Divider />
               <Dropdown.Header>In this app</Dropdown.Header>
               <Dropdown.Item
                 disabled={!factorySampleIds.length}
@@ -233,27 +295,26 @@ const TopBar = React.memo(
               </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown>
-          {transferRequestKey === setKey ? (
-            <VolcaTransferControl
-              samples={transferSamples}
-              sampleCaches={sampleCaches}
-              justTheButton
-              showInfoBeforeTransfer
-              initiallyOpen
-              button={transferButton}
-            />
-          ) : (
-            transferButton
-          )}
+          {transferButton}
         </div>
 
+        <SetTransferModal
+          show={isTransferOpen}
+          onHide={() => setIsTransferOpen(false)}
+          samples={activeSetSamples}
+          sampleCaches={sampleCaches}
+          deviceState={deviceState}
+        />
         <AllDataTransferModal
           action={allDataAction}
           onHide={() => setAllDataAction(null)}
+          onComplete={handleAllDataComplete}
+          onInterrupted={handleAllDataInterrupted}
         />
         <VolcaEraseSlotsModals
           isInfoBeforeEraseModalOpen={isEraseInfoOpen}
           setIsInfoBeforeEraseModalOpen={setIsEraseInfoOpen}
+          onEraseComplete={recordErase}
         />
         <SetNameModal
           title={nameModal === 'new' ? 'New set' : 'Rename set'}
@@ -264,6 +325,52 @@ const TopBar = React.memo(
           onHide={() => setNameModal(null)}
           onSave={nameModal === 'new' ? newSet : renameSet}
         />
+        <Modal
+          show={confirmAlreadyOnVolca}
+          onHide={() => setConfirmAlreadyOnVolca(false)}
+        >
+          <Modal.Header closeButton>
+            <Modal.Title>This set is already on my volca</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <p>
+              Use this if you transferred <strong>exactly this set</strong>{' '}
+              earlier (with the same order and edits), and the other slots on
+              your volca are empty.
+            </p>
+            <p className="mb-0">
+              From then on, a transfer only sends what you change. If you're not
+              sure, transfer the whole set once instead.
+            </p>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button
+              variant="light"
+              onClick={() => setConfirmAlreadyOnVolca(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                recordTransfer({
+                  sent: activeSetSamples.map((sample, slotNumber) => ({
+                    slotNumber,
+                    id: sample.id,
+                    metadata: sample.metadata,
+                  })),
+                  erased: Array.from(
+                    { length: VOLCA_SLOT_COUNT },
+                    (_, slot) => slot
+                  ).filter((slot) => slot >= activeSetSamples.length),
+                });
+                setConfirmAlreadyOnVolca(false);
+              }}
+            >
+              Yes, it's on my volca
+            </Button>
+          </Modal.Footer>
+        </Modal>
         <Modal
           show={confirmDeleteSet}
           onHide={() => setConfirmDeleteSet(false)}

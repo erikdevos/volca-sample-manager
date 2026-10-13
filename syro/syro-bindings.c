@@ -201,6 +201,23 @@ void createEmptySyroData(SyroData *syro_data, uint32_t syro_data_index,
   current_syro_data->SampleEndian = LittleEndian;
 }
 
+/**
+ * Erases one slot, the same way KORG's example does it ("e<slot>:"), so it can
+ * be combined with samples in the same transfer.
+ */
+EMSCRIPTEN_KEEPALIVE
+void createEraseSyroData(SyroData *syro_data, uint32_t syro_data_index,
+                         uint32_t slotNumber) {
+  SyroData *current_syro_data = syro_data + syro_data_index;
+  current_syro_data->DataType = DataType_Sample_Erase;
+  current_syro_data->Number = slotNumber;
+  current_syro_data->Quality = 16;
+  current_syro_data->pData = NULL;
+  current_syro_data->Size = 0;
+  current_syro_data->Fs = 31250;
+  current_syro_data->SampleEndian = LittleEndian;
+}
+
 EMSCRIPTEN_KEEPALIVE
 SyroData *allocateSyroData(uint32_t NumOfData) {
   SyroData *syro_data = malloc(sizeof(SyroData) * NumOfData);

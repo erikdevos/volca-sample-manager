@@ -44,9 +44,11 @@ const TRANSFER_ITEMS = [0];
  * @param {{
  *   action: AllDataAction | null;
  *   onHide: () => void;
+ *   onComplete: (action: AllDataAction) => void;
+ *   onInterrupted: () => void;
  * }} props
  */
-function AllDataTransferModal({ action, onHide }) {
+function AllDataTransferModal({ action, onHide, onComplete, onInterrupted }) {
   const config = action ? ACTIONS[action] : null;
   const [step, setStep] = useState(
     /** @type {'confirm' | 'connect' | 'done'} */ ('confirm')
@@ -113,16 +115,28 @@ function AllDataTransferModal({ action, onHide }) {
 
   // when the audio has played completely, the transfer is done
   useEffect(() => {
-    if (syroTransferState === 'transferring' && transferProgress >= 1) {
+    if (
+      action &&
+      step !== 'done' &&
+      syroTransferState === 'transferring' &&
+      transferProgress >= 1
+    ) {
       setStep('done');
+      onComplete(action);
     }
-  }, [syroTransferState, transferProgress]);
+  }, [action, step, syroTransferState, transferProgress, onComplete]);
+
+  // an interrupted transfer leaves the volca's memory erased or incomplete
+  const stopEarly = () => {
+    stopTransfer();
+    onInterrupted();
+  };
 
   const isReady = syroAudioBuffer instanceof AudioBuffer;
   const hasError = syroAudioBuffer instanceof Error;
 
   const close = () => {
-    if (transferInProgress) stopTransfer();
+    if (transferInProgress) stopEarly();
     onHide();
   };
 
@@ -247,7 +261,7 @@ function AllDataTransferModal({ action, onHide }) {
           </>
         )}
         {transferInProgress && (
-          <Button variant="outline-secondary" onClick={stopTransfer}>
+          <Button variant="outline-secondary" onClick={stopEarly}>
             Stop
           </Button>
         )}

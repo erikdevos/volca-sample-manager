@@ -1,34 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import { Container, Button, Alert } from 'react-bootstrap';
 
 import WaveformReadonly from './WaveformReadonly.js';
-import VolcaTransferControl from './VolcaTransferControl.js';
-import { SampleContainer } from './store.js';
 import { formatDate } from './utils/datetime.js';
 
 import classes from './SampleDetail.module.scss';
-
-/**
- * @param {import('./store').SampleContainer} readonlySample
- */
-function useSampleWithTemporalSlotNumber(readonlySample) {
-  const readonlySlotNumber = readonlySample.metadata.slotNumber;
-  const [slotNumber, setSlotNumber] = useState(readonlySlotNumber);
-  useEffect(() => {
-    setSlotNumber(readonlySlotNumber);
-  }, [readonlySlotNumber]);
-  const sample = useMemo(
-    () =>
-      readonlySample &&
-      new SampleContainer({
-        id: readonlySample.id,
-        ...readonlySample.metadata,
-        slotNumber,
-      }),
-    [readonlySample, slotNumber]
-  );
-  return { sample, setSlotNumber };
-}
 
 /**
  * @param {{
@@ -37,20 +13,7 @@ function useSampleWithTemporalSlotNumber(readonlySample) {
  *   onSampleDuplicate: (id: string) => void;
  * }} props
  */
-function SampleDetailReadonly({
-  sample: readonlySample,
-  sampleCache,
-  onSampleDuplicate,
-}) {
-  const { sample, setSlotNumber } =
-    useSampleWithTemporalSlotNumber(readonlySample);
-  const sampleCaches = useMemo(
-    () =>
-      sampleCache
-        ? new Map().set(sampleCache.sampleContainer.id, sampleCache)
-        : new Map(),
-    [sampleCache]
-  );
+function SampleDetailReadonly({ sample, sampleCache, onSampleDuplicate }) {
   return (
     <Container fluid="sm">
       <h2 className={classes.sampleName}>{sample.metadata.name}</h2>
@@ -73,12 +36,6 @@ function SampleDetailReadonly({
       </Alert>
       <h4>Preview</h4>
       <WaveformReadonly sample={sample} sampleCache={sampleCache} />
-      <h4>Transfer</h4>
-      <VolcaTransferControl
-        samples={sample}
-        sampleCaches={sampleCaches}
-        onSlotNumberUpdate={setSlotNumber}
-      />
     </Container>
   );
 }

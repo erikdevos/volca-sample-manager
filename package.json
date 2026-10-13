@@ -33,6 +33,7 @@
     "deploy": "gh-pages -m '[skip ci] Updates' -d build",
     "test": "node test/syro-bindings.test.js | tap-spec-emoji",
     "test:categories": "node test/categories.test.js | tap-spec-emoji",
+    "test:device": "node test/deviceDiff.test.js | tap-spec-emoji",
     "eject": "react-scripts eject",
     "zip": "rimraf build/Volca-Sampler-Offline.zip && rimraf Volca-Sampler-Offline && cp -r build Volca-Sampler-Offline && bestzip build/Volca-Sampler-Offline.zip Volca-Sampler-Offline/* && rimraf Volca-Sampler-Offline"
   },

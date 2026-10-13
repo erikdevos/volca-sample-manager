@@ -6,6 +6,11 @@
  *     syroDataIndex: number,
  *     slotNumber: number
  *   ): void;
+ *   createEraseSyroData(
+ *     syroDataHandle: number,
+ *     syroDataIndex: number,
+ *     slotNumber: number
+ *   ): void;
  *   createSyroDataFromWavData(
  *     syroDataHandle: number,
  *     syroDataIndex: number,
@@ -69,6 +74,11 @@ export async function getSyroBindings() {
           'number',
         ]),
         createEmptySyroData: Module.cwrap('createEmptySyroData', null, [
+          'number',
+          'number',
+          'number',
+        ]),
+        createEraseSyroData: Module.cwrap('createEraseSyroData', null, [
           'number',
           'number',
           'number',

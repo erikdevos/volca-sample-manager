@@ -19,6 +19,7 @@ import classes from './SlotGrid.module.scss';
 /** @typedef {import('../store').SampleContainer} SampleContainer */
 /** @typedef {import('../sampleCacheStore.js').SampleCache} SampleCache */
 /** @typedef {import('../useVolcaSets.js').VolcaSetsApi} VolcaSetsApi */
+/** @typedef {import('../utils/deviceDiff.js').SlotSyncStatus} SlotSyncStatus */
 
 /** Drag & drop type for samples dragged from the collection */
 export const SAMPLE_DRAG_TYPE = 'application/x-volca-sample-id';
@@ -40,6 +41,20 @@ function formatSlot(slot) {
   return slot.toString().padStart(2, '0');
 }
 
+/** @type {Partial<Record<SlotSyncStatus, { className: string; title: string }>>} */
+const SYNC_MARKS = {
+  unchanged: { className: 'onVolca', title: 'On your volca' },
+  changed: {
+    className: 'toSend',
+    title: 'Will be sent: your volca has something else in this slot',
+  },
+  new: { className: 'toSend', title: 'Will be sent: new on your volca' },
+  unknown: {
+    className: 'syncUnknown',
+    title: "Will be sent: the app doesn't know what's in this slot",
+  },
+};
+
 const SlotCell = React.memo(
   /**
    * @param {{
@@ -51,6 +66,7 @@ const SlotCell = React.memo(
    *   isOverflow: boolean;
    *   isHighlighted: boolean;
    *   duplicate: CellDuplicateInfo | null;
+   *   syncStatus: SlotSyncStatus | null;
    *   onHighlight: (slots: number[] | null) => void;
    *   onFocusSlot: (index: number) => void;
    *   onRemove: (id: string) => void;
@@ -66,6 +82,7 @@ const SlotCell = React.memo(
     isOverflow,
     isHighlighted,
     duplicate,
+    syncStatus,
     onHighlight,
     onFocusSlot,
     onRemove,
@@ -75,6 +92,7 @@ const SlotCell = React.memo(
       useListItemPlayback(sampleCache);
     const category = getSampleCategory(sample);
     const duration = sampleCache ? sampleCache.cachedInfo.duration : null;
+    const syncMark = syncStatus ? SYNC_MARKS[syncStatus] : undefined;
 
     return (
       <div
@@ -109,12 +127,20 @@ const SlotCell = React.memo(
           if (/** @type {HTMLElement} */ (e.target).closest('button')) return;
           onEdit(sample.id);
         }}
-        title={`${sample.metadata.name}\n${getCategoryLabel(
-          category
-        )}\nClick to play · double-click to edit · drag to move`}
+        title={`${sample.metadata.name}\n${getCategoryLabel(category)}${
+          syncMark ? `\n${syncMark.title}` : ''
+        }\nClick to play · double-click to edit · drag to move`}
       >
         <div className={classes.cellTop}>
-          <span className={classes.slotNumber}>{formatSlot(index)}</span>
+          <span className={classes.slotNumber}>
+            {syncMark && (
+              <i
+                className={`${classes.syncMark} ${classes[syncMark.className]}`}
+                aria-label={syncMark.title}
+              />
+            )}
+            {formatSlot(index)}
+          </span>
           {duplicate && (
             <span
               className={`${classes.duplicateBadge} ${
@@ -188,11 +214,20 @@ const SlotGrid = React.memo(
    * @param {{
    *   volcaSets: VolcaSetsApi;
    *   sampleCaches: Map<string, SampleCache>;
+   *   device: import('../utils/deviceDiff.js').DeviceState;
+   *   deviceDiff: import('../utils/deviceDiff.js').DeviceDiff;
    *   onEdit: (id: string) => void;
    *   onTrimSilence: () => void;
    * }} props
    */
-  function SlotGrid({ volcaSets, sampleCaches, onEdit, onTrimSilence }) {
+  function SlotGrid({
+    volcaSets,
+    sampleCaches,
+    device,
+    deviceDiff,
+    onEdit,
+    onTrimSilence,
+  }) {
     const {
       activeSetSamples,
       removeFromSet,
@@ -450,6 +485,31 @@ const SlotGrid = React.memo(
           </div>
         )}
 
+        {activeSetSamples.length > 0 || deviceDiff.toErase.length > 0 ? (
+          <div className={classes.syncLegend}>
+            <span>
+              <i className={`${classes.syncMark} ${classes.onVolca}`} />
+              On volca
+            </span>
+            <span>
+              <i className={`${classes.syncMark} ${classes.toSend}`} />
+              Will be sent
+            </span>
+            {!deviceDiff.isKnown && (
+              <span>
+                <i className={`${classes.syncMark} ${classes.syncUnknown}`} />
+                Unknown, will be sent
+              </span>
+            )}
+            {deviceDiff.toErase.length > 0 && (
+              <span>
+                <i className={classes.eraseSwatch} />
+                Will be erased
+              </span>
+            )}
+          </div>
+        ) : null}
+
         <div
           ref={gridRef}
           role="grid"
@@ -476,6 +536,11 @@ const SlotGrid = React.memo(
               onDrop: (e) => handleDrop(e, index),
             };
             if (!sample) {
+              const onVolca = device.slots[index];
+              const willErase =
+                deviceDiff.statuses[index] === 'erase' &&
+                onVolca &&
+                onVolca !== 'unknown';
               return (
                 <div
                   key={`empty-${index}`}
@@ -483,13 +548,27 @@ const SlotGrid = React.memo(
                   className={[
                     classes.cell,
                     classes.empty,
+                    willErase ? classes.willErase : '',
                     dropIndex === index ? classes.dropTarget : '',
                   ].join(' ')}
+                  title={
+                    willErase
+                      ? `${onVolca.name} is still on your volca and will be erased with the next transfer`
+                      : undefined
+                  }
                   {...dropProps}
                 >
                   <span className={classes.slotNumber}>
                     {formatSlot(index)}
                   </span>
+                  {willErase && (
+                    <>
+                      <span className={classes.name}>
+                        {getDisplayName(onVolca.name)}
+                      </span>
+                      <span className={classes.eraseNote}>will be erased</span>
+                    </>
+                  )}
                 </div>
               );
             }
@@ -510,6 +589,11 @@ const SlotGrid = React.memo(
                     highlightedSlots && highlightedSlots.includes(index)
                   )}
                   duplicate={cellDuplicates.get(sample.id) || null}
+                  syncStatus={
+                    index < VOLCA_SLOT_COUNT
+                      ? deviceDiff.statuses[index] || null
+                      : null
+                  }
                   onHighlight={setHighlightedSlots}
                   onFocusSlot={setFocusedIndex}
                   onRemove={(id) => removeFromSet([id])}

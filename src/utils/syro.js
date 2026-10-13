@@ -60,6 +60,93 @@ export function getSyroSampleBuffer(sampleContainers, onProgress) {
 }
 
 /**
+ * @typedef {{
+ *   type: 'sample';
+ *   wav: Uint8Array;
+ *   slotNumber: number;
+ *   quality: number;
+ *   useCompression: boolean;
+ * } | {
+ *   type: 'erase';
+ *   slotNumber: number;
+ * }} SyroStreamEntry
+ */
+
+/**
+ * One transfer that erases slots and sends samples, in the given order.
+ *
+ * @param {SyroStreamEntry[]} entries
+ * @param {(progress: number) => void} onProgress
+ * @returns {SyroBufferWork}
+ */
+export function getSyroStreamBuffer(entries, onProgress) {
+  return buildSyroBuffer(
+    entries.length,
+    async () => entries.map((e) => (e.type === 'sample' ? e.wav : null)),
+    ({ createSyroDataFromWavData, createEraseSyroData }, syroDataHandle) => {
+      entries.forEach((entry, i) => {
+        if (entry.type === 'erase') {
+          createEraseSyroData(syroDataHandle, i, entry.slotNumber);
+        } else {
+          createSyroDataFromWavData(
+            syroDataHandle,
+            i,
+            entry.wav,
+            entry.wav.length,
+            entry.slotNumber,
+            entry.quality,
+            entry.useCompression ? 1 : 0
+          );
+        }
+      });
+    },
+    onProgress
+  );
+}
+
+/**
+ * The transfer for (part of) a set: first erases the given slots, which frees
+ * memory on the volca, then sends the samples to their slots.
+ *
+ * @param {(import('../store').SampleContainer)[]} sampleContainers
+ * @param {number[]} eraseSlots
+ * @param {(progress: number) => void} onProgress
+ * @returns {SyroBufferWork}
+ */
+export function getSyroSetBuffer(sampleContainers, eraseSlots, onProgress) {
+  let cancelled = false;
+  /** @type {SyroBufferWork | null} */
+  let work = null;
+  return {
+    cancelWork() {
+      cancelled = true;
+      if (work) work.cancelWork();
+    },
+    syroBufferPromise: (async () => {
+      /** @type {SyroStreamEntry[]} */
+      const entries = eraseSlots.map((slotNumber) => ({
+        type: /** @type {const} */ ('erase'),
+        slotNumber,
+      }));
+      for (const sampleContainer of sampleContainers) {
+        const { data } = await getTargetWavForSample(sampleContainer);
+        if (cancelled)
+          return { syroBuffer: new Uint8Array(), dataStartPoints: [] };
+        entries.push({
+          type: 'sample',
+          wav: data,
+          slotNumber: sampleContainer.metadata.slotNumber,
+          quality: sampleContainer.metadata.qualityBitDepth,
+          useCompression: sampleContainer.metadata.useCompression,
+        });
+      }
+      work = getSyroStreamBuffer(entries, onProgress);
+      return work.syroBufferPromise;
+    })(),
+  };
+}
+
+/**
  * Transfer audio for one of KORG's .alldata files, which replaces the whole
  * sample memory of the volca sample (used to restore the factory samples or
  * to erase everything at once).
@@ -83,11 +170,11 @@ export function getSyroAllDataBuffer(allData, onProgress) {
  * Runs the Syro conversion in a web worker, for any kind of data.
  *
  * @param {number} numOfData
- * @param {(isCancelled: () => boolean) => Promise<Uint8Array[]>} prepareInputs
+ * @param {(isCancelled: () => boolean) => Promise<(Uint8Array | null)[]>} prepareInputs
  * @param {(
  *   bindings: import('./getSyroBindings.js').SyroBindings,
  *   syroDataHandle: number,
- *   inputs: Uint8Array[]
+ *   inputs: (Uint8Array | null)[]
  * ) => void} fillSyroData
  * @param {(progress: number) => void} onProgress
  * @returns {SyroBufferWork}

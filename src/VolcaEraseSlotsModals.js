@@ -24,11 +24,13 @@ const VolcaEraseSlotsModals = React.memo(
    * @param {{
    *   isInfoBeforeEraseModalOpen: boolean;
    *   setIsInfoBeforeEraseModalOpen(value: boolean): void;
+   *   onEraseComplete?: (slotNumbers: number[]) => void;
    * }} props
    */
   function VolcaEraseSlotsControl({
     isInfoBeforeEraseModalOpen,
     setIsInfoBeforeEraseModalOpen,
+    onEraseComplete,
   }) {
     const [isPreEraseModalOpen, setIsPreEraseModalOpen] = useState(false);
     const [selectedSlotNumbers, setSelectedSlotNumbers] = useState(
@@ -97,6 +99,19 @@ const VolcaEraseSlotsModals = React.memo(
       dataStartPoints,
       selectedItems: slotNumbers,
     });
+
+    // when the audio has played completely, the slots are erased
+    const reportedSlotNumbers = useRef(/** @type {number[] | null} */ (null));
+    useEffect(() => {
+      if (
+        syroTransferState === 'transferring' &&
+        transferProgress >= 1 &&
+        reportedSlotNumbers.current !== slotNumbers
+      ) {
+        reportedSlotNumbers.current = slotNumbers;
+        if (onEraseComplete) onEraseComplete(slotNumbers);
+      }
+    }, [syroTransferState, transferProgress, slotNumbers, onEraseComplete]);
 
     const allChecked = Array(showSample2SlotNumbers ? 200 : 100)
       .fill(0)
