@@ -15,6 +15,7 @@ import TopBar from './manager/TopBar.js';
 import SlotGrid from './manager/SlotGrid.js';
 import LibraryPanel from './manager/LibraryPanel.js';
 import DuplicatesModal from './manager/DuplicatesModal.js';
+import TrimSilenceModal from './manager/TrimSilenceModal.js';
 import { useVolcaSets, VolcaSetContext } from './useVolcaSets.js';
 import { VOLCA_SLOT_COUNT } from './setStore.js';
 import {
@@ -636,6 +637,20 @@ function App() {
 
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isDuplicatesOpen, setIsDuplicatesOpen] = useState(false);
+  const [trimTarget, setTrimTarget] = useState(
+    /** @type {{ title: string; sampleIds: string[] } | null} */ (null)
+  );
+  const trimSamples = useMemo(
+    () =>
+      /** @type {SampleContainer[]} */ (
+        (trimTarget ? trimTarget.sampleIds : [])
+          .map((id) => allSamples.get(id))
+          .filter(Boolean)
+      ),
+    // only take the samples as they are when the modal opens
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [trimTarget]
+  );
 
   return (
     <VolcaSetContext.Provider value={volcaSetContextValue}>
@@ -672,6 +687,12 @@ function App() {
               volcaSets={volcaSets}
               sampleCaches={allSampleCaches}
               onEdit={handleSampleSelect}
+              onTrimSilence={() =>
+                setTrimTarget({
+                  title: 'Trim silence in your set',
+                  sampleIds: volcaSets.activeSetSamples.map((s) => s.id),
+                })
+              }
             />
           </main>
           <div className={classes.libraryPane}>
@@ -686,6 +707,12 @@ function App() {
               onSampleDelete={handleSampleDelete}
               onAddToSet={volcaSets.addToSet}
               onFindDuplicates={() => setIsDuplicatesOpen(true)}
+              onTrimSilence={(sampleIds) =>
+                setTrimTarget({
+                  title: 'Trim silence in selected samples',
+                  sampleIds,
+                })
+              }
             />
           </div>
         </div>
@@ -749,6 +776,14 @@ function App() {
             <Footer />
           </Modal.Body>
         </Modal>
+
+        <TrimSilenceModal
+          show={Boolean(trimTarget)}
+          title={trimTarget ? trimTarget.title : ''}
+          samples={trimSamples}
+          onHide={() => setTrimTarget(null)}
+          onSampleUpdate={handleSampleUpdate}
+        />
 
         <DuplicatesModal
           show={isDuplicatesOpen}

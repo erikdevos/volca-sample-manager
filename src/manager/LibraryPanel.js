@@ -202,6 +202,7 @@ const LibraryPanel = React.memo(
    *   onSampleDelete: (id: string | string[]) => void;
    *   onAddToSet: (ids: string[]) => void;
    *   onFindDuplicates: () => void;
+   *   onTrimSilence: (ids: string[]) => void;
    * }} props
    */
   function LibraryPanel({
@@ -215,6 +216,7 @@ const LibraryPanel = React.memo(
     onSampleDelete,
     onAddToSet,
     onFindDuplicates,
+    onTrimSilence,
   }) {
     const [source, setSource] = useState(
       /** @type {'collection' | 'factory'} */ (
@@ -443,6 +445,13 @@ const LibraryPanel = React.memo(
                     </option>
                   ))}
                 </Form.Select>
+                <Button
+                  size="sm"
+                  variant="outline-secondary"
+                  onClick={() => onTrimSilence(checkedList.map((s) => s.id))}
+                >
+                  Trim silence
+                </Button>
                 <Button
                   size="sm"
                   variant="outline-danger"

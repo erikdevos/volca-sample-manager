@@ -152,9 +152,10 @@ const SlotGrid = React.memo(
    *   volcaSets: VolcaSetsApi;
    *   sampleCaches: Map<string, SampleCache>;
    *   onEdit: (id: string) => void;
+   *   onTrimSilence: () => void;
    * }} props
    */
-  function SlotGrid({ volcaSets, sampleCaches, onEdit }) {
+  function SlotGrid({ volcaSets, sampleCaches, onEdit, onTrimSilence }) {
     const {
       activeSetSamples,
       removeFromSet,
@@ -281,6 +282,15 @@ const SlotGrid = React.memo(
               onClick={sortSetByCategory}
             >
               Sort by category
+            </Button>
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              disabled={!activeSetSamples.length}
+              onClick={onTrimSilence}
+              title="Cut silence from the start and end of the samples in this set"
+            >
+              Trim silence
             </Button>
             <Button
               size="sm"
