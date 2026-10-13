@@ -44,7 +44,16 @@ test('categorizes typical names', (t) => {
     ['083-choir.wav', 'melodic'],
     ['00 Kick 1.wav', 'kick'],
     ['30 Hihat 1.wav', 'hihat-closed'],
-    ['WhiteNoise.wav', UNSORTED_CATEGORY_ID],
+    ['59 WhiteNoise.wav', 'fx'],
+    ['43 SynthRim.wav', 'rim'],
+    ['44 SynthTom 1.wav', 'tom'],
+    ['50 SynthCow.wav', 'perc'],
+    ['60 SynthHit 1.wav', 'stab'],
+    ['56 DoncaSConga.wav', 'perc'],
+    ['57 DoncaLBongo.wav', 'perc'],
+    ['73 EPChord 1.wav', 'melodic'],
+    ['78 BandHit 1.wav', 'stab'],
+    ['my synth.wav', 'melodic'],
     ['something.wav', UNSORTED_CATEGORY_ID],
   ];
   for (const [fileName, category] of cases) {

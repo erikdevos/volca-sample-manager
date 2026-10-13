@@ -201,6 +201,7 @@ const LibraryPanel = React.memo(
    *   ) => void;
    *   onSampleDelete: (id: string | string[]) => void;
    *   onAddToSet: (ids: string[]) => void;
+   *   onFindDuplicates: () => void;
    * }} props
    */
   function LibraryPanel({
@@ -213,6 +214,7 @@ const LibraryPanel = React.memo(
     onSampleUpdate,
     onSampleDelete,
     onAddToSet,
+    onFindDuplicates,
   }) {
     const [source, setSource] = useState(
       /** @type {'collection' | 'factory'} */ (
@@ -368,10 +370,21 @@ const LibraryPanel = React.memo(
         </div>
 
         {isCollection && (
-          <LibraryImport
-            userSamples={userSamples}
-            onBulkImport={onBulkImport}
-          />
+          <>
+            <LibraryImport
+              userSamples={userSamples}
+              onBulkImport={onBulkImport}
+            />
+            <Button
+              size="sm"
+              variant="outline-secondary"
+              className={classes.duplicatesButton}
+              disabled={userSamples.size < 2}
+              onClick={onFindDuplicates}
+            >
+              Find duplicates
+            </Button>
+          </>
         )}
 
         <CategoryFilter

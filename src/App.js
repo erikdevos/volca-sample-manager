@@ -14,6 +14,7 @@ import PluginManager from './PluginManager.js';
 import TopBar from './manager/TopBar.js';
 import SlotGrid from './manager/SlotGrid.js';
 import LibraryPanel from './manager/LibraryPanel.js';
+import DuplicatesModal from './manager/DuplicatesModal.js';
 import { useVolcaSets, VolcaSetContext } from './useVolcaSets.js';
 import { VOLCA_SLOT_COUNT } from './setStore.js';
 import {
@@ -634,6 +635,7 @@ function App() {
   }, [pluginNameList]);
 
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isDuplicatesOpen, setIsDuplicatesOpen] = useState(false);
 
   return (
     <VolcaSetContext.Provider value={volcaSetContextValue}>
@@ -683,6 +685,7 @@ function App() {
               onSampleUpdate={handleSampleUpdate}
               onSampleDelete={handleSampleDelete}
               onAddToSet={volcaSets.addToSet}
+              onFindDuplicates={() => setIsDuplicatesOpen(true)}
             />
           </div>
         </div>
@@ -746,6 +749,16 @@ function App() {
             <Footer />
           </Modal.Body>
         </Modal>
+
+        <DuplicatesModal
+          show={isDuplicatesOpen}
+          onHide={() => setIsDuplicatesOpen(false)}
+          userSamples={userSamples}
+          factorySamples={factorySamples}
+          sampleCaches={allSampleCaches}
+          onSampleDelete={handleSampleDelete}
+          onSampleUpdate={handleSampleUpdate}
+        />
 
         <PluginManager
           isOpen={isPluginManagerOpen}

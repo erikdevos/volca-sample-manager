@@ -72,7 +72,7 @@ export const CATEGORIES = [
       'pad',
       'bell',
       'kalimba',
-      'synth',
+      'chime',
       'lead',
       'ep',
     ],
@@ -96,6 +96,11 @@ export function getCategoryLabel(categoryId) {
 }
 
 const HIHAT_ALIASES = ['hihat', 'hithat', 'hat', 'hh', 'hats'];
+/**
+ * Words that describe how a sound was made rather than what it is, like
+ * "SynthTom": the instrument word that follows decides the category.
+ */
+const MODIFIER_WORDS = ['synth', 'syn'];
 const HIHAT_OPEN_WORDS = ['open', 'oh', 'opn'];
 const HIHAT_CLOSED_WORDS = ['closed', 'close', 'ch', 'cls'];
 
@@ -107,12 +112,17 @@ const HIHAT_CLOSED_WORDS = ['closed', 'close', 'ch', 'cls'];
  * @returns {string[]}
  */
 export function getFileNameWords(fileName) {
-  return fileName
-    .replace(/\.[a-z0-9]{2,4}$/i, '')
-    .replace(/^[\d\s._-]+[a-z]?(?=[\s._-])/i, '')
-    .toLowerCase()
-    .split(/[^a-z]+/)
-    .filter(Boolean);
+  return (
+    fileName
+      .replace(/\.[a-z0-9]{2,4}$/i, '')
+      .replace(/^[\d\s._-]+[a-z]?(?=[\s._-])/i, '')
+      // split CamelCase words: "DoncaSConga" -> "Donca S Conga"
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+      .toLowerCase()
+      .split(/[^a-z]+/)
+      .filter(Boolean)
+  );
 }
 
 /**
@@ -142,6 +152,9 @@ function wordMatchesAny(word, aliases) {
 export function getCategoryFromFileName(fileName) {
   const words = getFileNameWords(fileName);
   for (const word of words) {
+    if (MODIFIER_WORDS.includes(word)) {
+      continue;
+    }
     if (wordMatchesAny(word, HIHAT_ALIASES)) {
       // an explicit "closed" wins from e.g. an "OH" source tag, and a hihat
       // that's not marked as open is assumed to be closed
@@ -161,6 +174,10 @@ export function getCategoryFromFileName(fileName) {
     if (category) {
       return category.id;
     }
+  }
+  if (words.some((word) => MODIFIER_WORDS.includes(word))) {
+    // just "synth" with nothing more specific
+    return 'melodic';
   }
   return UNSORTED_CATEGORY_ID;
 }
