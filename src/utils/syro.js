@@ -14,17 +14,85 @@ import {
 } from './audioData.js';
 
 /**
- * @param {(import('../store').SampleContainer)[]} sampleContainers
- * @param {(progress: number) => void} onProgress
- * @returns {{
+ * @typedef {{
  *   syroBufferPromise: Promise<{
  *     syroBuffer: Uint8Array;
  *     dataStartPoints: number[];
  *   }>;
  *   cancelWork: () => void;
- * }}
+ * }} SyroBufferWork
+ */
+
+/**
+ * @param {(import('../store').SampleContainer)[]} sampleContainers
+ * @param {(progress: number) => void} onProgress
+ * @returns {SyroBufferWork}
  */
 export function getSyroSampleBuffer(sampleContainers, onProgress) {
+  return buildSyroBuffer(
+    sampleContainers.length,
+    async (isCancelled) => {
+      /** @type {Uint8Array[]} */
+      const targetWavs = [];
+      for (const sampleContainer of sampleContainers) {
+        const { data } = await getTargetWavForSample(sampleContainer);
+        if (isCancelled()) break;
+        targetWavs.push(data);
+      }
+      return targetWavs;
+    },
+    ({ createSyroDataFromWavData }, syroDataHandle, targetWavs) => {
+      sampleContainers.forEach((sampleContainer, i) => {
+        const data = targetWavs[i];
+        createSyroDataFromWavData(
+          syroDataHandle,
+          i,
+          data,
+          data.length,
+          sampleContainer.metadata.slotNumber,
+          sampleContainer.metadata.qualityBitDepth,
+          sampleContainer.metadata.useCompression ? 1 : 0
+        );
+      });
+    },
+    onProgress
+  );
+}
+
+/**
+ * Transfer audio for one of KORG's .alldata files, which replaces the whole
+ * sample memory of the volca sample (used to restore the factory samples or
+ * to erase everything at once).
+ *
+ * @param {Uint8Array} allData
+ * @param {(progress: number) => void} onProgress
+ * @returns {SyroBufferWork}
+ */
+export function getSyroAllDataBuffer(allData, onProgress) {
+  return buildSyroBuffer(
+    1,
+    async () => [allData],
+    ({ createSyroDataFromAllData }, syroDataHandle, [data]) => {
+      createSyroDataFromAllData(syroDataHandle, 0, data, data.length, 16, 1);
+    },
+    onProgress
+  );
+}
+
+/**
+ * Runs the Syro conversion in a web worker, for any kind of data.
+ *
+ * @param {number} numOfData
+ * @param {(isCancelled: () => boolean) => Promise<Uint8Array[]>} prepareInputs
+ * @param {(
+ *   bindings: import('./getSyroBindings.js').SyroBindings,
+ *   syroDataHandle: number,
+ *   inputs: Uint8Array[]
+ * ) => void} fillSyroData
+ * @param {(progress: number) => void} onProgress
+ * @returns {SyroBufferWork}
+ */
+function buildSyroBuffer(numOfData, prepareInputs, fillSyroData, onProgress) {
   let cancelled = false;
   let onCancel = () => {};
   return {
@@ -33,9 +101,9 @@ export function getSyroSampleBuffer(sampleContainers, onProgress) {
       onCancel();
     },
     syroBufferPromise: (async () => {
+      const bindings = await getSyroBindings();
       const {
         allocateSyroData,
-        createSyroDataFromWavData,
         prepareSampleBufferFromSyroData,
         getSampleBufferChunkPointer,
         getSampleBufferChunkSize,
@@ -46,7 +114,7 @@ export function getSyroSampleBuffer(sampleContainers, onProgress) {
         registerUpdateCallback,
         unregisterUpdateCallback,
         heap8Buffer,
-      } = await getSyroBindings();
+      } = bindings;
       const emptyResponse = {
         syroBuffer: new Uint8Array(),
         dataStartPoints: [],
@@ -54,19 +122,14 @@ export function getSyroSampleBuffer(sampleContainers, onProgress) {
       if (cancelled) {
         return emptyResponse;
       }
-      /** @type {Uint8Array[]} */
-      const targetWavs = [];
-      for (const sampleContainer of sampleContainers) {
-        const { data } = await getTargetWavForSample(sampleContainer);
-        if (cancelled) {
-          return emptyResponse;
-        }
-        targetWavs.push(data);
+      const inputs = await prepareInputs(() => cancelled);
+      if (cancelled) {
+        return emptyResponse;
       }
       /** @type {Uint8Array | undefined} */
       let syroBuffer;
       let progress = 0;
-      const dataStartPoints = new Uint32Array(sampleContainers.length);
+      const dataStartPoints = new Uint32Array(numOfData);
       const onUpdate = registerUpdateCallback((sampleBufferUpdatePointer) => {
         if (cancelled) {
           return;
@@ -92,30 +155,15 @@ export function getSyroSampleBuffer(sampleContainers, onProgress) {
           sampleBufferUpdatePointer
         );
         dataStartPoints.set(
-          new Uint32Array(
-            heap8Buffer(),
-            dataStartPointsPointer,
-            sampleContainers.length
-          ),
+          new Uint32Array(heap8Buffer(), dataStartPointsPointer, numOfData),
           0
         );
       });
-      const syroDataHandle = allocateSyroData(sampleContainers.length);
-      sampleContainers.forEach((sampleContainer, i) => {
-        const data = targetWavs[i];
-        createSyroDataFromWavData(
-          syroDataHandle,
-          i,
-          data,
-          data.length,
-          sampleContainer.metadata.slotNumber,
-          sampleContainer.metadata.qualityBitDepth,
-          sampleContainer.metadata.useCompression ? 1 : 0
-        );
-      });
+      const syroDataHandle = allocateSyroData(numOfData);
+      fillSyroData(bindings, syroDataHandle, inputs);
       const workHandle = prepareSampleBufferFromSyroData(
         syroDataHandle,
-        sampleContainers.length,
+        numOfData,
         onUpdate
       );
       onProgress(progress);

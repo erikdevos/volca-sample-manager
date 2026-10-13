@@ -15,6 +15,14 @@
  *     quality: number,
  *     useCompression: 0 | 1
  *   ): void;
+ *   createSyroDataFromAllData(
+ *     syroDataHandle: number,
+ *     syroDataIndex: number,
+ *     allData: Uint8Array,
+ *     bytes: number,
+ *     quality: number,
+ *     useCompression: 0 | 1
+ *   ): void;
  *   getDeleteBufferFromSyroData(
  *     syroDataHandle: number,
  *     numOfData: number
@@ -67,6 +75,11 @@ export async function getSyroBindings() {
         ]),
         createSyroDataFromWavData: Module.cwrap(
           'createSyroDataFromWavData',
+          null,
+          ['number', 'number', 'array', 'number', 'number', 'number']
+        ),
+        createSyroDataFromAllData: Module.cwrap(
+          'createSyroDataFromAllData',
           null,
           ['number', 'number', 'array', 'number', 'number', 'number']
         ),

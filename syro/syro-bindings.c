@@ -168,6 +168,26 @@ void createSyroDataFromWavData(SyroData *syro_data, uint32_t syro_data_index,
   }
 }
 
+/**
+ * For KORG's .alldata files, which replace the complete sample memory of the
+ * volca sample at once (e.g. to restore the factory samples or erase all).
+ */
+EMSCRIPTEN_KEEPALIVE
+void createSyroDataFromAllData(SyroData *syro_data, uint32_t syro_data_index,
+                               uint8_t *allData, uint32_t bytes,
+                               uint32_t quality, uint32_t useCompression) {
+  SyroData *current_syro_data = syro_data + syro_data_index;
+  current_syro_data->DataType =
+      useCompression == 0 ? DataType_Sample_All : DataType_Sample_AllCompress;
+  current_syro_data->Number = 0;
+  current_syro_data->Quality = quality;
+  current_syro_data->pData = malloc(bytes);
+  memcpy(current_syro_data->pData, allData, bytes);
+  current_syro_data->Size = bytes;
+  current_syro_data->Fs = 31250;
+  current_syro_data->SampleEndian = LittleEndian;
+}
+
 EMSCRIPTEN_KEEPALIVE
 void createEmptySyroData(SyroData *syro_data, uint32_t syro_data_index,
                          uint32_t slotNumber) {

@@ -72,7 +72,7 @@ function insertByCategory(sampleIds, sample, allSamples) {
  *   activeSetSamples: SampleContainer[];
  *   activeSetSampleIds: Set<string>;
  *   selectSet: (id: string) => void;
- *   newSet: (name: string) => void;
+ *   newSet: (name: string, sampleIds?: string[]) => void;
  *   renameSet: (name: string) => void;
  *   removeSet: () => void;
  *   addToSet: (ids: string[]) => void;
@@ -260,9 +260,12 @@ export function useVolcaSets(allSamples, samplesLoaded) {
   );
 
   const newSet = useCallback(
-    /** @param {string} name */
-    (name) => {
-      const volcaSet = createVolcaSet(name);
+    /**
+     * @param {string} name
+     * @param {string[]} [sampleIds]
+     */
+    (name, sampleIds = []) => {
+      const volcaSet = { ...createVolcaSet(name), sampleIds };
       saveVolcaSet(volcaSet);
       setSets((sets) => [...sets, volcaSet]);
       setActiveSetId(volcaSet.id);

@@ -635,6 +635,15 @@ function App() {
     };
   }, [pluginNameList]);
 
+  // in their original slot order
+  const factorySampleIds = useMemo(
+    () =>
+      [...factorySamples.values()]
+        .sort((a, b) => a.metadata.slotNumber - b.metadata.slotNumber)
+        .map((s) => s.id),
+    [factorySamples]
+  );
+
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isDuplicatesOpen, setIsDuplicatesOpen] = useState(false);
   const [trimTarget, setTrimTarget] = useState(
@@ -659,6 +668,7 @@ function App() {
           volcaSets={volcaSets}
           sampleCaches={allSampleCaches}
           seconds={setSeconds}
+          factorySampleIds={factorySampleIds}
           onAboutClick={() => setIsAboutOpen(true)}
         />
         <nav className={classes.mobileTabs}>

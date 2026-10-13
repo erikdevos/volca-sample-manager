@@ -4,6 +4,7 @@ import { Button, Dropdown, Form, Modal } from 'react-bootstrap';
 import CapacityMeter from './CapacityMeter.js';
 import VolcaTransferControl from '../VolcaTransferControl.js';
 import VolcaEraseSlotsModals from '../VolcaEraseSlotsModals.js';
+import AllDataTransferModal from './AllDataTransferModal.js';
 import { SampleContainer } from '../store.js';
 import { VOLCA_MEMORY_SECONDS, VOLCA_SLOT_COUNT } from '../setStore.js';
 
@@ -64,10 +65,17 @@ const TopBar = React.memo(
    *   volcaSets: VolcaSetsApi;
    *   sampleCaches: Map<string, SampleCache>;
    *   seconds: number;
+   *   factorySampleIds: string[];
    *   onAboutClick: () => void;
    * }} props
    */
-  function TopBar({ volcaSets, sampleCaches, seconds, onAboutClick }) {
+  function TopBar({
+    volcaSets,
+    sampleCaches,
+    seconds,
+    factorySampleIds,
+    onAboutClick,
+  }) {
     const {
       sets,
       activeSet,
@@ -105,6 +113,11 @@ const TopBar = React.memo(
     );
 
     const [isEraseInfoOpen, setIsEraseInfoOpen] = useState(false);
+    const [allDataAction, setAllDataAction] = useState(
+      /** @type {import('./AllDataTransferModal.js').AllDataAction | null} */ (
+        null
+      )
+    );
     const [nameModal, setNameModal] = useState(
       /** @type {'new' | 'rename' | null} */ (null)
     );
@@ -192,14 +205,34 @@ const TopBar = React.memo(
         <CapacityMeter slotsUsed={activeSetSamples.length} seconds={seconds} />
 
         <div className={classes.actions}>
-          <Button
-            type="button"
-            variant="outline-light"
-            className={classes.clearButton}
-            onClick={() => setIsEraseInfoOpen(true)}
-          >
-            Clear volca
-          </Button>
+          <Dropdown>
+            <Dropdown.Toggle
+              variant="outline-light"
+              className={classes.clearButton}
+            >
+              Volca
+            </Dropdown.Toggle>
+            <Dropdown.Menu>
+              <Dropdown.Header>On your volca sample</Dropdown.Header>
+              <Dropdown.Item onClick={() => setAllDataAction('eraseAll')}>
+                Erase all samples...
+              </Dropdown.Item>
+              <Dropdown.Item onClick={() => setIsEraseInfoOpen(true)}>
+                Erase specific slots...
+              </Dropdown.Item>
+              <Dropdown.Item onClick={() => setAllDataAction('restoreFactory')}>
+                Restore factory samples...
+              </Dropdown.Item>
+              <Dropdown.Divider />
+              <Dropdown.Header>In this app</Dropdown.Header>
+              <Dropdown.Item
+                disabled={!factorySampleIds.length}
+                onClick={() => newSet('Factory set', factorySampleIds)}
+              >
+                New set from the factory samples
+              </Dropdown.Item>
+            </Dropdown.Menu>
+          </Dropdown>
           {transferRequestKey === setKey ? (
             <VolcaTransferControl
               samples={transferSamples}
@@ -214,6 +247,10 @@ const TopBar = React.memo(
           )}
         </div>
 
+        <AllDataTransferModal
+          action={allDataAction}
+          onHide={() => setAllDataAction(null)}
+        />
         <VolcaEraseSlotsModals
           isInfoBeforeEraseModalOpen={isEraseInfoOpen}
           setIsInfoBeforeEraseModalOpen={setIsEraseInfoOpen}
