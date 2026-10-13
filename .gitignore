@@ -33,3 +33,6 @@ public/factory-samples.json
 
 # editor swap files
 *.swp
+
+# own sample files (in the browser and backups, not in the repo)
+samples/
