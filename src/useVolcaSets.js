@@ -13,10 +13,13 @@ import {
   saveVolcaSet,
 } from './setStore.js';
 import {
-  getCategoryOrder,
-  getSampleCategory,
-  sampleCategoryCompare,
-} from './utils/categories.js';
+  insertAtSlot,
+  moveSlot,
+  placeSample,
+  removeSamples,
+  sortSlotsByCategory,
+} from './utils/setSlots.js';
+import { VOLCA_SLOT_COUNT } from './setStore.js';
 
 /** @typedef {import('./setStore.js').VolcaSet} VolcaSet */
 /** @typedef {import('./store').SampleContainer} SampleContainer */
@@ -41,35 +44,11 @@ function writeActiveSetId(id) {
 }
 
 /**
- * Inserts a sample at the end of its category block, so a set stays grouped
- * by category (like the factory layout) without manual sorting.
- *
- * @param {string[]} sampleIds
- * @param {SampleContainer} sample
- * @param {Map<string, SampleContainer>} allSamples
- */
-function insertByCategory(sampleIds, sample, allSamples) {
-  const order = getCategoryOrder(getSampleCategory(sample));
-  let insertAt = sampleIds.length;
-  for (let i = 0; i < sampleIds.length; i++) {
-    const other = allSamples.get(sampleIds[i]);
-    if (other && getCategoryOrder(getSampleCategory(other)) > order) {
-      insertAt = i;
-      break;
-    }
-  }
-  return [
-    ...sampleIds.slice(0, insertAt),
-    sample.id,
-    ...sampleIds.slice(insertAt),
-  ];
-}
-
-/**
  * @typedef {{
  *   sets: VolcaSet[];
  *   activeSet: VolcaSet | null;
  *   activeSetSamples: SampleContainer[];
+ *   activeSetSlots: (SampleContainer | null)[];
  *   activeSetSampleIds: Set<string>;
  *   selectSet: (id: string) => void;
  *   newSet: (name: string, sampleIds?: string[]) => void;
@@ -136,33 +115,49 @@ export function useVolcaSets(allSamples, samplesLoaded) {
     [activeSetId]
   );
 
-  // Drop samples that were deleted from the library
+  // Empty the slots of samples that were deleted from the library
   useEffect(() => {
     if (!samplesLoaded) return;
     setSets((sets) =>
       sets.map((s) => {
-        const sampleIds = s.sampleIds.filter((id) => allSamples.has(id));
-        if (sampleIds.length === s.sampleIds.length) return s;
-        const updated = { ...s, sampleIds };
+        const deleted = /** @type {string[]} */ (
+          s.sampleIds.filter((id) => id && !allSamples.has(id))
+        );
+        if (!deleted.length) return s;
+        const updated = {
+          ...s,
+          sampleIds: removeSamples(s.sampleIds, deleted),
+        };
         saveVolcaSet(updated);
         return updated;
       })
     );
   }, [allSamples, samplesLoaded]);
 
-  const activeSetSamples = useMemo(
+  // index = slot number
+  const activeSetSlots = useMemo(
     () =>
-      /** @type {SampleContainer[]} */ (
-        (activeSet ? activeSet.sampleIds : [])
-          .map((id) => allSamples.get(id))
-          .filter(Boolean)
+      (activeSet ? activeSet.sampleIds : []).map(
+        (id) => (id && allSamples.get(id)) || null
       ),
     [activeSet, allSamples]
   );
 
+  // just the samples, in slot order
+  const activeSetSamples = useMemo(
+    () => /** @type {SampleContainer[]} */ (activeSetSlots.filter(Boolean)),
+    [activeSetSlots]
+  );
+
   const activeSetSampleIds = useMemo(
-    () => new Set(activeSet ? activeSet.sampleIds : []),
-    [activeSet]
+    () => new Set(activeSetSamples.map((s) => s.id)),
+    [activeSetSamples]
+  );
+
+  const getSample = useCallback(
+    /** @param {string} id */
+    (id) => allSamplesRef.current.get(id),
+    []
   );
 
   const addToSet = useCallback(
@@ -171,21 +166,21 @@ export function useVolcaSets(allSamples, samplesLoaded) {
       updateActiveSet(({ sampleIds }) => {
         let newIds = sampleIds;
         for (const id of ids) {
-          const sample = allSamplesRef.current.get(id);
-          if (sample && !newIds.includes(id)) {
-            newIds = insertByCategory(newIds, sample, allSamplesRef.current);
+          const sample = getSample(id);
+          if (sample) {
+            newIds = placeSample(newIds, sample, getSample, VOLCA_SLOT_COUNT);
           }
         }
         return { sampleIds: newIds };
       }),
-    [updateActiveSet]
+    [updateActiveSet, getSample]
   );
 
   const removeFromSet = useCallback(
     /** @param {string[]} ids */
     (ids) =>
       updateActiveSet(({ sampleIds }) => ({
-        sampleIds: sampleIds.filter((id) => !ids.includes(id)),
+        sampleIds: removeSamples(sampleIds, ids),
       })),
     [updateActiveSet]
   );
@@ -195,16 +190,16 @@ export function useVolcaSets(allSamples, samplesLoaded) {
     (id) =>
       updateActiveSet(({ sampleIds }) => {
         if (sampleIds.includes(id)) {
-          return { sampleIds: sampleIds.filter((i) => i !== id) };
+          return { sampleIds: removeSamples(sampleIds, [id]) };
         }
-        const sample = allSamplesRef.current.get(id);
+        const sample = getSample(id);
         return {
           sampleIds: sample
-            ? insertByCategory(sampleIds, sample, allSamplesRef.current)
+            ? placeSample(sampleIds, sample, getSample, VOLCA_SLOT_COUNT)
             : sampleIds,
         };
       }),
-    [updateActiveSet]
+    [updateActiveSet, getSample]
   );
 
   const moveInSet = useCallback(
@@ -213,12 +208,9 @@ export function useVolcaSets(allSamples, samplesLoaded) {
      * @param {number} toIndex
      */
     (fromIndex, toIndex) =>
-      updateActiveSet(({ sampleIds }) => {
-        const newIds = sampleIds.slice();
-        const [moved] = newIds.splice(fromIndex, 1);
-        newIds.splice(toIndex, 0, moved);
-        return { sampleIds: newIds };
-      }),
+      updateActiveSet(({ sampleIds }) => ({
+        sampleIds: moveSlot(sampleIds, fromIndex, toIndex),
+      })),
     [updateActiveSet]
   );
 
@@ -228,24 +220,18 @@ export function useVolcaSets(allSamples, samplesLoaded) {
      * @param {number} index
      */
     (id, index) =>
-      updateActiveSet(({ sampleIds }) => {
-        const newIds = sampleIds.filter((i) => i !== id);
-        newIds.splice(Math.min(index, newIds.length), 0, id);
-        return { sampleIds: newIds };
-      }),
+      updateActiveSet(({ sampleIds }) => ({
+        sampleIds: insertAtSlot(sampleIds, id, index),
+      })),
     [updateActiveSet]
   );
 
   const sortSetByCategory = useCallback(
     () =>
       updateActiveSet(({ sampleIds }) => ({
-        sampleIds: /** @type {SampleContainer[]} */ (
-          sampleIds.map((id) => allSamplesRef.current.get(id)).filter(Boolean)
-        )
-          .sort(sampleCategoryCompare)
-          .map((s) => s.id),
+        sampleIds: sortSlotsByCategory(sampleIds, getSample),
       })),
-    [updateActiveSet]
+    [updateActiveSet, getSample]
   );
 
   const emptySet = useCallback(
@@ -292,6 +278,7 @@ export function useVolcaSets(allSamples, samplesLoaded) {
     sets,
     activeSet,
     activeSetSamples,
+    activeSetSlots,
     activeSetSampleIds,
     selectSet: setActiveSetId,
     newSet,

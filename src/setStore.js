@@ -11,13 +11,13 @@ export const VOLCA_SLOT_COUNT = 100;
 export const VOLCA_MEMORY_SECONDS = 65;
 
 /**
- * A set is what you want on the volca: an ordered list of samples where the
- * position in the list is the slot number.
+ * A set is what you want on the volca: the position in `sampleIds` is the
+ * slot number, `null` is an empty slot (see utils/setSlots.js).
  *
  * @typedef {{
  *   id: string;
  *   name: string;
- *   sampleIds: string[];
+ *   sampleIds: (string | null)[];
  *   dateModified: string;
  * }} VolcaSet
  */

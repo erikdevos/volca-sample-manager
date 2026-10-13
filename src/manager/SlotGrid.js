@@ -230,6 +230,7 @@ const SlotGrid = React.memo(
   }) {
     const {
       activeSetSamples,
+      activeSetSlots,
       removeFromSet,
       moveInSet,
       insertInSet,
@@ -244,8 +245,11 @@ const SlotGrid = React.memo(
     /** @type {React.RefObject<HTMLDivElement>} */
     const gridRef = useRef(null);
 
-    const slotCount = Math.max(VOLCA_SLOT_COUNT, activeSetSamples.length);
-    const overflowCount = activeSetSamples.length - VOLCA_SLOT_COUNT;
+    const slotCount = Math.max(VOLCA_SLOT_COUNT, activeSetSlots.length);
+    const overflowCount = activeSetSlots
+      .slice(VOLCA_SLOT_COUNT)
+      .filter(Boolean).length;
+    const gapCount = activeSetSlots.filter((s) => !s).length;
 
     const setDuplicates = useSetDuplicates(activeSetSamples);
     const [highlightedSlots, setHighlightedSlots] = useState(
@@ -253,7 +257,11 @@ const SlotGrid = React.memo(
     );
     /** @type {Map<string, CellDuplicateInfo>} */
     const cellDuplicates = useMemo(() => {
-      const slotById = new Map(activeSetSamples.map((s, i) => [s.id, i]));
+      /** @type {Map<string, number>} */
+      const slotById = new Map();
+      activeSetSlots.forEach((s, i) => {
+        if (s) slotById.set(s.id, i);
+      });
       const cells = new Map();
       for (const [id, info] of setDuplicates) {
         const partners = info.partners
@@ -261,8 +269,9 @@ const SlotGrid = React.memo(
           .map((p) => ({
             slot: /** @type {number} */ (slotById.get(p.id)),
             level: p.level,
-            name: activeSetSamples[/** @type {number} */ (slotById.get(p.id))]
-              .metadata.name,
+            name: /** @type {SampleContainer} */ (
+              activeSetSlots[/** @type {number} */ (slotById.get(p.id))]
+            ).metadata.name,
           }))
           .sort((a, b) => a.slot - b.slot);
         if (slotById.has(id) && partners.length) {
@@ -275,13 +284,13 @@ const SlotGrid = React.memo(
         }
       }
       return cells;
-    }, [setDuplicates, activeSetSamples]);
+    }, [setDuplicates, activeSetSlots]);
     // pairs of slots for the summary above the grid, each pair only once
     const duplicatePairs = useMemo(() => {
       /** @type {{ a: number; b: number; level: 'same' | 'similar' }[]} */
       const pairs = [];
-      activeSetSamples.forEach((sample, slot) => {
-        const info = cellDuplicates.get(sample.id);
+      activeSetSlots.forEach((sample, slot) => {
+        const info = sample && cellDuplicates.get(sample.id);
         if (!info) return;
         for (const partner of info.partners) {
           if (partner.slot > slot) {
@@ -290,7 +299,7 @@ const SlotGrid = React.memo(
         }
       });
       return pairs;
-    }, [cellDuplicates, activeSetSamples]);
+    }, [cellDuplicates, activeSetSlots]);
     const samePairs = duplicatePairs.filter((p) => p.level === 'same');
     const similarPairs = duplicatePairs.filter((p) => p.level === 'similar');
 
@@ -314,8 +323,7 @@ const SlotGrid = React.memo(
 
     /** @type {React.KeyboardEventHandler} */
     const handleKeyDown = (e) => {
-      const count = activeSetSamples.length;
-      if (!count) return;
+      const count = slotCount;
       // the number of columns depends on the screen width
       const columns = gridRef.current
         ? getComputedStyle(gridRef.current).gridTemplateColumns.split(' ')
@@ -343,7 +351,7 @@ const SlotGrid = React.memo(
         if (cell) cell.click();
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        const sample = activeSetSamples[focusedIndex];
+        const sample = activeSetSlots[focusedIndex];
         if (sample) removeFromSet([sample.id]);
       }
     };
@@ -358,8 +366,7 @@ const SlotGrid = React.memo(
       const fromSlot = e.dataTransfer.getData(SLOT_DRAG_TYPE);
       if (fromSlot !== '') {
         const from = Number(fromSlot);
-        const to = Math.min(index, activeSetSamples.length - 1);
-        if (from !== to) moveInSet(from, to);
+        if (from !== index) moveInSet(from, index);
         return;
       }
       const sampleId = e.dataTransfer.getData(SAMPLE_DRAG_TYPE);
@@ -399,8 +406,9 @@ const SlotGrid = React.memo(
               variant="outline-secondary"
               disabled={activeSetSamples.length < 2}
               onClick={sortSetByCategory}
+              title="Sort the set by category and close the gaps. This gives samples new slot numbers, so they need to be sent again."
             >
-              Sort by category
+              Sort by category{gapCount > 0 ? ' & close gaps' : ''}
             </Button>
             <Button
               size="sm"
@@ -525,7 +533,7 @@ const SlotGrid = React.memo(
           }}
         >
           {Array.from({ length: slotCount }, (_, index) => {
-            const sample = activeSetSamples[index];
+            const sample = activeSetSlots[index];
             const dropProps = {
               /** @param {React.DragEvent} e */
               onDragOver: (e) => {
@@ -545,6 +553,9 @@ const SlotGrid = React.memo(
                 <div
                   key={`empty-${index}`}
                   role="gridcell"
+                  tabIndex={index === focusedIndex ? 0 : -1}
+                  data-slot={index}
+                  onClick={() => setFocusedIndex(index)}
                   className={[
                     classes.cell,
                     classes.empty,
@@ -605,7 +616,8 @@ const SlotGrid = React.memo(
         </div>
         <p className={classes.footnote}>
           Click a slot to listen · arrow keys to browse · double-click to edit ·
-          drag to rearrange · Delete to remove from the set
+          drag onto another slot to swap · Delete to remove from the set (other
+          samples keep their slot)
         </p>
       </section>
     );

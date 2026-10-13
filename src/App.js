@@ -532,7 +532,7 @@ function App() {
     allSamples,
     !loadingSamples && factorySamples.size > 0
   );
-  const deviceState = useDeviceState(volcaSets.activeSetSamples);
+  const deviceState = useDeviceState(volcaSets.activeSetSlots);
   const allSampleCaches = useMemo(
     () => new Map([...userSampleCaches, ...factorySampleCaches]),
     [userSampleCaches, factorySampleCaches]

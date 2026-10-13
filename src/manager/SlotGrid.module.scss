@@ -102,6 +102,10 @@
     border-color: var(--vsm-accent);
     background: var(--vsm-accent-soft);
   }
+
+  &:focus-visible {
+    border-color: var(--vsm-accent);
+  }
 }
 
 .filled {

@@ -46,7 +46,7 @@ function formatSlot(slot) {
  * @param {{
  *   show: boolean;
  *   onHide: () => void;
- *   samples: SampleContainer[];
+ *   samples: (SampleContainer | null)[]; // index = slot number
  *   sampleCaches: Map<string, SampleCache>;
  *   deviceState: DeviceStateApi;
  * }} props
@@ -83,17 +83,23 @@ function SetTransferModal({
   /** @param {'changes' | 'all'} mode */
   const getPlan = (mode) => {
     const sendSlots =
-      mode === 'changes' ? diff.toSend : samples.map((_, slot) => slot);
+      mode === 'changes'
+        ? diff.toSend
+        : samples.flatMap((sample, slot) => (sample ? [slot] : []));
     /** @type {TransferPlan} */
     const plan = {
-      send: sendSlots.map(
-        (slotNumber) =>
-          new SampleContainer({
-            ...samples[slotNumber].metadata,
-            id: samples[slotNumber].id,
-            slotNumber,
-          })
-      ),
+      send: sendSlots.flatMap((slotNumber) => {
+        const sample = samples[slotNumber];
+        return sample
+          ? [
+              new SampleContainer({
+                ...sample.metadata,
+                id: sample.id,
+                slotNumber,
+              }),
+            ]
+          : [];
+      }),
       erase: [...diff.toErase, ...(eraseUnknown ? diff.unknownEmpty : [])].sort(
         (a, b) => a - b
       ),

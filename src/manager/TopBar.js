@@ -106,13 +106,14 @@ const TopBar = React.memo(
       sets,
       activeSet,
       activeSetSamples,
+      activeSetSlots,
       selectSet,
       newSet,
       renameSet,
       removeSet,
     } = volcaSets;
 
-    const isOverSlots = activeSetSamples.length > VOLCA_SLOT_COUNT;
+    const isOverSlots = activeSetSlots.length > VOLCA_SLOT_COUNT;
     const isOverMemory = seconds > VOLCA_MEMORY_SECONDS;
     const canTransfer =
       activeSetSamples.length > 0 && !isOverSlots && !isOverMemory;
@@ -301,7 +302,7 @@ const TopBar = React.memo(
         <SetTransferModal
           show={isTransferOpen}
           onHide={() => setIsTransferOpen(false)}
-          samples={activeSetSamples}
+          samples={activeSetSlots}
           sampleCaches={sampleCaches}
           deviceState={deviceState}
         />
@@ -354,15 +355,18 @@ const TopBar = React.memo(
               variant="primary"
               onClick={() => {
                 recordTransfer({
-                  sent: activeSetSamples.map((sample, slotNumber) => ({
-                    slotNumber,
-                    id: sample.id,
-                    metadata: sample.metadata,
-                  })),
+                  sent: activeSetSamples.map((sample) => {
+                    const slotNumber = activeSetSlots.indexOf(sample);
+                    return {
+                      slotNumber,
+                      id: sample.id,
+                      metadata: sample.metadata,
+                    };
+                  }),
                   erased: Array.from(
                     { length: VOLCA_SLOT_COUNT },
                     (_, slot) => slot
-                  ).filter((slot) => slot >= activeSetSamples.length),
+                  ).filter((slot) => !activeSetSlots[slot]),
                 });
                 setConfirmAlreadyOnVolca(false);
               }}
